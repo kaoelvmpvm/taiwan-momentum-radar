@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "started": "2026-11-25",
+  "last_day": "2026-11-25",
+  "pending": null,
+  "signals": [],
+  "trades": [],
+  "daily": [
+    {
+      "day": "2026-11-25",
+      "nav": {
+        "S0": 100000.0,
+        "M2": 100000.0,
+        "M3": 100000.0
+      },
+      "unobserved_sessions": []
+    }
+  ],
+  "accounts": {
+    "S0": {
+      "cash": 100000.0,
+      "positions": {},
+      "nav": 100000.0,
+      "peak": 100000.0,
+      "mdd": 0.0,
+      "cost": 0.0
+    },
+    "M2": {
+      "cash": 100000.0,
+      "positions": {},
+      "nav": 100000.0,
+      "peak": 100000.0,
+      "mdd": 0.0,
+      "cost": 0.0
+    },
+    "M3": {
+      "cash": 100000.0,
+      "positions": {},
+      "nav": 100000.0,
+      "peak": 100000.0,
+      "mdd": 0.0,
+      "cost": 0.0
+    }
+  }
+}
