@@ -1,8 +1,8 @@
-# 台股動能研究平台 · V0.7
+# 台股動能研究平台 · V0.8
 
 **前瞻性研究｜虛擬本金｜不涉及實際交易**
 
-[每日排行榜](README.md) · [歷史監測](HISTORY.md) · [詳細模擬帳本](PAPER.md) · [回測結果](../backtest/RESEARCH_RESULT.md) · [本次執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45625299583)
+[每日研究報告](DAILY.md) · [通知中心](ALERTS.md) · [月報與季報](PERIODS.md) · [每日排行榜](README.md) · [歷史監測](HISTORY.md) · [詳細模擬帳本](PAPER.md) · [回測結果](../backtest/RESEARCH_RESULT.md) · [本次執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45626721394)
 
 排名行情日期：2026-11-25　｜　模擬估值日期：2026-11-25
 
