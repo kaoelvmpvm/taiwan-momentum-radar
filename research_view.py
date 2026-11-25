@@ -131,8 +131,8 @@ def allocations(state,names):
 
 def render(state,ranking,radar_result,paper_result,run_url):
     names={x["code"]:x["name"] for x in ranking.get("ranking",[])}
-    lines=["# 台股動能研究平台 · V0.7","","**前瞻性研究｜虛擬本金｜不涉及實際交易**","",
-           "[每日排行榜](README.md) · [歷史監測](HISTORY.md) · [詳細模擬帳本](PAPER.md) · [回測結果](../backtest/RESEARCH_RESULT.md) · [本次執行紀錄]("+run_url+")","",
+    lines=["# 台股動能研究平台 · V0.8","","**前瞻性研究｜虛擬本金｜不涉及實際交易**","",
+           "[每日研究報告](DAILY.md) · [通知中心](ALERTS.md) · [月報與季報](PERIODS.md) · [每日排行榜](README.md) · [歷史監測](HISTORY.md) · [詳細模擬帳本](PAPER.md) · [回測結果](../backtest/RESEARCH_RESULT.md) · [本次執行紀錄]("+run_url+")","",
            f"排名行情日期：{cell(ranking.get('asof','尚無'))}　｜　模擬估值日期：{cell(state['last_day'] or '尚無')}",""]
     if radar_result!="success" or paper_result!="success":
         lines += ["> 本次資料或模擬帳本未完整更新。下方保留最近已保存資料，不能視為當日結果。",""]
@@ -210,7 +210,7 @@ def main():
         generate(dest,a.radar_result,a.paper_result,a.run_url)
     except Exception as exc:
         # Never present a stale page as a new successful update.
-        (dest/"RESEARCH.md").write_text("# 台股動能研究平台 · V0.7\n\n> 研究首頁更新未通過："+cell(exc)+"\n\n[查看原始帳本](PAPER.md) · [執行紀錄]("+a.run_url+")\n",encoding="utf-8")
+        (dest/"RESEARCH.md").write_text("# 台股動能研究平台 · V0.8\n\n> 研究首頁更新未通過："+cell(exc)+"\n\n[查看原始帳本](PAPER.md) · [執行紀錄]("+a.run_url+")\n",encoding="utf-8")
         print("RESEARCH_VIEW_BLOCKED",str(exc),flush=True)
         return 1
     return 0
