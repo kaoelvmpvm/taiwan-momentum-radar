@@ -1,0 +1,240 @@
+{
+  "status": "BLOCKED_FOR_FORMAL_BACKTEST",
+  "source_run": 45711442718,
+  "regular_count": 26,
+  "verified_nonregular": [
+    {
+      "effective": "2021-01-07",
+      "published": "2021-01-04",
+      "url": "https://taiwanindex.com.tw/news/176",
+      "groups": {
+        "0050": {
+          "add": [],
+          "remove": []
+        },
+        "0051": {
+          "add": [
+            "2609"
+          ],
+          "remove": [
+            "5264"
+          ]
+        }
+      }
+    },
+    {
+      "effective": "2021-12-20",
+      "published": "2021-12-15",
+      "url": "https://taiwanindex.com.tw/news/199",
+      "groups": {
+        "0050": {
+          "add": [],
+          "remove": []
+        },
+        "0051": {
+          "add": [
+            "3035"
+          ],
+          "remove": [
+            "2823"
+          ]
+        }
+      }
+    },
+    {
+      "effective": "2020-07-10",
+      "published": "2020-07-02",
+      "url": "https://taiwanindex.com.tw/news/159",
+      "groups": {
+        "0050": {
+          "add": [],
+          "remove": []
+        },
+        "0051": {
+          "add": [
+            "3653"
+          ],
+          "remove": [
+            "2371"
+          ]
+        }
+      }
+    }
+  ],
+  "unresolved": {
+    "effective": "2025-07-14",
+    "published": "2025-07-09",
+    "removed": "2888",
+    "official_notice": "https://research.ftserussell.com/products/index-notices/home/getnotice/?id=2616449",
+    "reserve_source": "https://taiwanindex.com.tw/news/362",
+    "candidates": [
+      "3596",
+      "6005",
+      "6412",
+      "6670",
+      "2504",
+      "2597",
+      "5434",
+      "2606",
+      "2637",
+      "6691"
+    ],
+    "reason": "Official update does not identify replacement; consistency alone cannot certify it."
+  },
+  "candidate_reverse_trials": [
+    {
+      "candidate": "3596",
+      "checked": 5,
+      "blocked": {
+        "date": "2025-07-14",
+        "issues": [
+          {
+            "g": "0051",
+            "missing": [
+              "3596"
+            ],
+            "present": []
+          }
+        ]
+      }
+    },
+    {
+      "candidate": "6005",
+      "checked": 5,
+      "blocked": {
+        "date": "2025-07-14",
+        "issues": [
+          {
+            "g": "0051",
+            "missing": [
+              "6005"
+            ],
+            "present": []
+          }
+        ]
+      }
+    },
+    {
+      "candidate": "6412",
+      "checked": 5,
+      "blocked": {
+        "date": "2025-07-14",
+        "issues": [
+          {
+            "g": "0051",
+            "missing": [
+              "6412"
+            ],
+            "present": []
+          }
+        ]
+      }
+    },
+    {
+      "candidate": "6670",
+      "checked": 5,
+      "blocked": {
+        "date": "2025-07-14",
+        "issues": [
+          {
+            "g": "0051",
+            "missing": [
+              "6670"
+            ],
+            "present": []
+          }
+        ]
+      }
+    },
+    {
+      "candidate": "2504",
+      "checked": 5,
+      "blocked": {
+        "date": "2025-07-14",
+        "issues": [
+          {
+            "g": "0051",
+            "missing": [
+              "2504"
+            ],
+            "present": []
+          }
+        ]
+      }
+    },
+    {
+      "candidate": "2597",
+      "checked": 5,
+      "blocked": {
+        "date": "2025-07-14",
+        "issues": [
+          {
+            "g": "0051",
+            "missing": [
+              "2597"
+            ],
+            "present": []
+          }
+        ]
+      }
+    },
+    {
+      "candidate": "5434",
+      "checked": 30,
+      "blocked": null
+    },
+    {
+      "candidate": "2606",
+      "checked": 5,
+      "blocked": {
+        "date": "2025-07-14",
+        "issues": [
+          {
+            "g": "0051",
+            "missing": [
+              "2606"
+            ],
+            "present": []
+          }
+        ]
+      }
+    },
+    {
+      "candidate": "2637",
+      "checked": 5,
+      "blocked": {
+        "date": "2025-07-14",
+        "issues": [
+          {
+            "g": "0051",
+            "missing": [
+              "2637"
+            ],
+            "present": []
+          }
+        ]
+      }
+    },
+    {
+      "candidate": "6691",
+      "checked": 5,
+      "blocked": {
+        "date": "2025-07-14",
+        "issues": [
+          {
+            "g": "0051",
+            "missing": [
+              "6691"
+            ],
+            "present": []
+          }
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "Current ETF holdings proxy is not an independent index anchor.",
+    "Unknown additional nonregular events may exist even if reverse checks pass.",
+    "Missing delisting proceeds and historical adjusted prices."
+  ]
+}
