@@ -1,6 +1,6 @@
 # 台股動能雷達 · V0.3
 
-[歷史監測與個股走勢](HISTORY.md) · [本次執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45619451389)
+[歷史監測與個股走勢](HISTORY.md) · [本次執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45620094107)
 
 **更新狀態：資料檢查通過**
 
@@ -15,7 +15,7 @@
 | 資料覆蓋率 | 151／151 |
 | 0050 全池排名 | 49 |
 | 0050 12個月報酬 | +52.66% |
-| 產製時間 | 2026-11-25T21:02:27+08:00 |
+| 產製時間 | 2026-11-25T21:06:24+08:00 |
 
 ### 前五名（快照）
 
