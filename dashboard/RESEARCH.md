@@ -2,11 +2,11 @@
 
 **前瞻性研究｜虛擬本金｜不涉及實際交易**
 
-[每日研究報告](DAILY.md) · [通知中心](ALERTS.md) · [月報與季報](PERIODS.md) · [每日排行榜](README.md) · [歷史監測](HISTORY.md) · [詳細模擬帳本](PAPER.md) · [回測結果](../backtest/RESEARCH_RESULT.md) · [本次執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45635667453)
+[每日研究報告](DAILY.md) · [通知中心](ALERTS.md) · [月報與季報](PERIODS.md) · [每日排行榜](README.md) · [歷史監測](HISTORY.md) · [詳細模擬帳本](PAPER.md) · [回測結果](../backtest/RESEARCH_RESULT.md) · [本次執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45636002176)
 
 排名行情日期：2026-11-25　｜　模擬估值日期：2026-11-25
 
-> 本次資料或模擬帳本未完整更新。下方保留最近已保存資料，不能視為當日結果。
+本次流程通過。仍須以各資料日期為準；尚未建立部位不代表策略已完成實際驗證。
 
 ## 三組策略即時比較
 

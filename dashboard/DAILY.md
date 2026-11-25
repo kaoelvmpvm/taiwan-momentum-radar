@@ -2,9 +2,7 @@
 
 報告執行日期：2026-11-25；排名日期：2026-11-25；帳本日期：2026-11-25
 
-[研究首頁](RESEARCH.md) · [通知中心](ALERTS.md) · [月報與季報](PERIODS.md) · [執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45635667453)
-
-> 本次未取得完整當日結果，以下是最近已保存的資料，不是新行情。
+[研究首頁](RESEARCH.md) · [通知中心](ALERTS.md) · [月報與季報](PERIODS.md) · [執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45636002176)
 
 ## 一、本次觀察
 
@@ -26,7 +24,8 @@
 ## 三、訊號與風險提醒
 
 目前無待成交訊號。
-本次資料更新未通過或日期未同步，不能判斷當日是否新增事件。
+
+當日沒有新增已記錄訊號、成交或回撤門檻事件。
 
 ## 四、研究判讀與後續追蹤
 
