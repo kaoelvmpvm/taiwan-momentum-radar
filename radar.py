@@ -307,6 +307,21 @@ FACE_VALUE_EVENTS = {
 }
 
 
+def verify_suspended_rows(frame, event, code, quote_lookup):
+    """Discard only vendor rows within the documented suspension with no official closing quote."""
+    old, new = pd.Timestamp(event["last_old"]), pd.Timestamp(event["first_new"])
+    extra = frame.index[(frame.index > old) & (frame.index < new)]
+    removed = []
+    for day in extra:
+        date = str(day.date())
+        quotes = quote_lookup(date)  # raises on incomplete or wrong-date response
+        if code in quotes:
+            raise ValueError(f"{code} 停牌期間官方仍有有效收盤報價：{date} {quotes[code]}")
+        removed.append({"date":date,"vendor_close":float(frame.at[day,"Close"]),
+                        "vendor_adj_close":float(frame.at[day,"Adj Close"])})
+    return frame.drop(index=extra), removed
+
+
 def reconcile_face_value(frame, event, old_close, new_close):
     """Repair only a documented missing adjustment; never adjust twice."""
     old, new = pd.Timestamp(event["last_old"]), pd.Timestamp(event["first_new"])
@@ -410,7 +425,12 @@ def main():
                 if event and base <= pd.Timestamp(event["last_old"]) and pd.Timestamp(asof) >= pd.Timestamp(event["first_new"]):
                     old_quote = dated_official_market(event["last_old"])[c][1]
                     new_quote = dated_official_market(event["first_new"])[c][1]
+                    extra = frame.loc[event["last_old"]:event["first_new"], ["Close","Adj Close"]]
+                    print(f"{c} vendor event window: {extra.to_string()}")
+                    print(f"{c} official event quotes: {old_quote}, {new_quote}")
+                    frame, removed = verify_suspended_rows(frame, event, c, dated_official_market)
                     frame, audit = reconcile_face_value(frame, event, old_quote, new_quote)
+                    audit["verified_nontrading_rows_removed"] = removed
                     payload.setdefault("corporate_action_audit", {})[c] = audit
                     print(f"{c} corporate action audit: {json.dumps(audit, ensure_ascii=False)}")
                 score = momentum(frame, asof, base, market[c][1])

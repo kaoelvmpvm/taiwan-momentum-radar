@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from radar import fund_rows, momentum, baseline_date, clean_history, render, read_export_tables, extract_export_members, parse_dated_market, reconcile_face_value
+from radar import fund_rows, momentum, baseline_date, clean_history, render, read_export_tables, extract_export_members, parse_dated_market, reconcile_face_value, verify_suspended_rows
 
 class RadarTests(unittest.TestCase):
     def setUp(self):
@@ -61,6 +61,17 @@ class RadarTests(unittest.TestCase):
             reconcile_face_value(bad,event,1000.,52.)
         with self.assertRaises(ValueError):
             reconcile_face_value(f.drop(idx[1]),event,1000.,52.)
+
+    def test_suspended_rows(self):
+        event = {"last_old":"2026-08-26","first_new":"2026-09-07","ratio":20}
+        idx = pd.to_datetime(["2026-08-26","2026-08-27","2026-09-04","2026-09-07"])
+        f = pd.DataFrame({"Close":[1000.,1000.,50.,52.],"Adj Close":[1000.,1000.,50.,52.]},index=idx)
+        fixed, removed = verify_suspended_rows(f,event,"6949",lambda day:{"0050":(day,90.)})
+        self.assertEqual(list(fixed.index),[idx[0],idx[-1]])
+        self.assertEqual([x["date"] for x in removed],["2026-08-27","2026-09-04"])
+        with self.assertRaises(ValueError):
+            verify_suspended_rows(f,event,"6949",lambda day:{"6949":(day,50.)})
+        self.assertEqual(len(f),4)
 
     def test_duplicate(self):
         with self.assertRaises(ValueError):
