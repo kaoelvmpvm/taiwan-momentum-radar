@@ -1,0 +1,16 @@
+{
+  "status": "issuer_verified_identifiers_not_actual_holder_receipt",
+  "code": "2888",
+  "source": "https://www.tsholdings.com.tw/tsh/issue/issue3/1752563173071/?__locale=zh",
+  "announcement_date": "2025-07-15",
+  "listed_from": "2025-07-24",
+  "common": {
+    "code": "2887",
+    "ratio": 0.672
+  },
+  "preferred": {
+    "code": "2887I",
+    "ratio": 0.175
+  },
+  "note": "Use with pit_retired_actions.json; current raw-price run may have captured prior null preferred code; no cash receipt or fill assumed."
+}
