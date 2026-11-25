@@ -2,6 +2,7 @@
 import argparse
 import json
 import math
+from rank_history import save_snapshot, load_history, render_history, changes
 from datetime import date
 from pathlib import Path
 
@@ -50,8 +51,8 @@ def update(payload,previous,run_result):
     except (ValueError,KeyError,TypeError,AttributeError) as exc:
         return previous,"更新未通過",str(exc)
 
-def markdown(current,status,error,run_url,issues=()):
-    lines=["# 台股動能雷達 · V0.2","","[本次執行紀錄]("+run_url+")","","**更新狀態："+cell(status)+"**",""]
+def markdown(current,status,error,run_url,issues=(),history=()):
+    lines=["# 台股動能雷達 · V0.3","","[歷史監測與個股走勢](HISTORY.md) · [本次執行紀錄]("+run_url+")","","**更新狀態："+cell(status)+"**",""]
     if error:
         lines += ["> 本次更新未通過。下方如有資料，僅為最近一次成功的歷史快照，不代表當前排名。","",cell(error),""]
         lines += ["- "+cell(x) for x in issues[:20]]
@@ -59,6 +60,12 @@ def markdown(current,status,error,run_url,issues=()):
     if not current:
         return "\n".join(lines+["尚未有完整通過驗收的排行榜。",""])
     rows=current["ranking"]
+    prev=next((s for s in reversed(history) if s["asof"]<current["asof"]),None)
+    delta=changes(current,prev)
+    lines += [f"已累積 {len(history)} 個成功行情日。"+(f" 名次比較基準：{prev['asof']}（上一個成功快照）。" if prev else " 目前尚無跨日名次變動。"),""]
+    if prev:
+        a,b=prev["ranking"][0],rows[0]
+        lines += ["第一名異動："+(f"{a['code']} {cell(a['name'])} → {b['code']} {cell(b['name'])}" if a["code"]!=b["code"] else "未變動"),""]
     bench=next(x for x in rows if x["code"]=="0050")
     rank=next(i for i,x in enumerate(rows,1) if x["code"]=="0050")
     lines += ["## 最近成功快照","","| 項目 | 數值 |","|---|---|",
@@ -68,12 +75,14 @@ def markdown(current,status,error,run_url,issues=()):
               "| 0050 全池排名 | "+str(rank)+" |",
               "| 0050 12個月報酬 | "+f"{bench['momentum']:+.2f}% |",
               "| 產製時間 | "+cell(current["generated"])+" |","",
-              "### 前五名（快照）","","| 排名 | 代碼 | 名稱 | 12月動能 | 相對0050（百分點） |","|---:|---|---|---:|---:|"]
+              "### 前五名（快照）","","| 排名 | 代碼 | 名稱 | 12月動能 | 相對0050（百分點） | 名次變動 |","|---:|---|---|---:|---:|---:|"]
     def row_text(i,x,group=False):
         group_text=(" | "+cell(x["group"])) if group else ""
-        return f"| {i} | {cell(x['code'])} | {cell(x['name'])}{group_text} | {x['momentum']:+.2f}% | {x['momentum']-bench['momentum']:+.2f} |"
+        change=delta[x["code"]]["rank_delta"]
+        movement="—" if change is None else f"{change:+d}"
+        return f"| {i} | {cell(x['code'])} | [{cell(x['name'])}](charts/{x['code']}.svg){group_text} | {x['momentum']:+.2f}% | {x['momentum']-bench['momentum']:+.2f} | {movement} |"
     lines += [row_text(i,x) for i,x in enumerate(rows[:5],1)]
-    lines += ["","### 全部151檔","","| 排名 | 代碼 | 名稱 | 群組 | 12月動能 | 相對0050（百分點） |","|---:|---|---|---|---:|---:|"]
+    lines += ["","### 全部151檔","","| 排名 | 代碼 | 名稱 | 群組 | 12月動能 | 相對0050（百分點） | 名次變動 |","|---:|---|---|---|---:|---:|---:|"]
     lines += [row_text(i,x,True) for i,x in enumerate(rows,1)]
     lines += ["","## 方法與限制","","完整12個月還原價格報酬；元大0050及0051持股代理池＋0050 ETF。相對0050為報酬差（百分點），不是風險調整後超額報酬。",
               "每日快照僅供研究；正式月底換股規則尚未啟用。歷史公司行動尚未全面獨立查核。不得據此直接下單。",
@@ -96,11 +105,16 @@ def main():
     except (OSError,ValueError):
         payload={}
     current,status,error=update(payload,previous,args.run_result)
+    if previous and not (dest/"history"/(previous["asof"]+".json")).exists():
+        save_snapshot(dest,previous)
     if not error and current is not None:
+        save_snapshot(dest,current)
         last.write_text(json.dumps(current,ensure_ascii=False,indent=2,allow_nan=False)+"\n",encoding="utf-8")
     issues=payload.get("issues",[]) if isinstance(payload,dict) else []
     if not isinstance(issues,list): issues=[]
-    (dest/"README.md").write_text(markdown(current,status,error,args.run_url,issues),encoding="utf-8")
+    history=load_history(dest)
+    render_history(dest,history)
+    (dest/"README.md").write_text(markdown(current,status,error,args.run_url,issues,history),encoding="utf-8")
     print(status,error,"latest snapshot:",current["asof"] if current else "none")
     return 1 if args.run_result=="success" and error else 0
 
