@@ -32,6 +32,44 @@ def fund_rows(text, tables=()):
     return rows
 
 
+def export_fund_rows(page, fund, expected, preview):
+    """Use the issuer's own Excel export. Require full count and matching preview."""
+    button = page.get_by_text(re.compile(r"^(?:Export\s*excel|匯出\s*Excel|下載\s*Excel)$", re.I))
+    with page.expect_download(timeout=25000) as pending:
+        button.first.click(timeout=10000)
+    download = pending.value
+    path = OUT / ("issuer-" + fund + Path(download.suggested_filename).suffix.lower())
+    download.save_as(str(path))
+    result = {}
+    try:
+        with pd.ExcelFile(path) as workbook:
+            for sheet in workbook.sheet_names:
+                table = pd.read_excel(workbook, sheet_name=sheet, header=None, dtype=str).fillna("")
+                for i, line in enumerate(table.values.tolist()):
+                    labels = [re.sub(r"\s+", "", str(x)).lower() for x in line]
+                    codes = [j for j,x in enumerate(labels) if x in ("商品代碼","股票代碼","證券代號","證券代碼","股票代號","代碼","stockcode","code")]
+                    names = [j for j,x in enumerate(labels) if x in ("商品名稱","股票名稱","證券名稱","名稱","stockname","name")]
+                    if not codes or not names:
+                        continue
+                    block = {}
+                    for row in table.iloc[i+1:].values.tolist():
+                        code = str(row[codes[0]]).strip()
+                        name = str(row[names[0]]).strip()
+                        if CODE.fullmatch(code) and name:
+                            block[code] = name
+                        elif block and (not code or "代碼" in code or "代號" in code):
+                            break
+                    if len(block) == expected and set(preview).issubset(block):
+                        if result and result != block:
+                            raise ValueError("Excel contains conflicting full holding tables")
+                        result = block
+        if len(result) != expected:
+            raise ValueError(f"Excel did not contain a matching {expected}-stock table")
+        return result
+    finally:
+        path.unlink(missing_ok=True)
+
+
 def fund_snapshot():
     from playwright.sync_api import sync_playwright
     result = {}
@@ -39,43 +77,67 @@ def fund_snapshot():
         browser = p.chromium.launch(headless=True)
         try:
             for fund, expected in EXPECTED.items():
-                page = browser.new_page(viewport={"width": 390, "height": 844}, locale="zh-TW")
+                page = browser.new_page(viewport={"width": 1440, "height": 1000}, locale="zh-TW", accept_downloads=True)
                 try:
                     page.goto(FUND_URL.format(fund), wait_until="domcontentloaded", timeout=60000)
                     page.wait_for_function("document.body.innerText.includes('基金權重-股票') || document.body.innerText.includes('基金權重－股票')", timeout=45000)
                     page.wait_for_timeout(2000)
-                    rows = {}
-                    for _ in range(30):
+                    def read_stock():
                         body = page.locator("body").inner_text()
-                        # Scope to stock section, excluding derivatives.
                         segment = re.split(r"基金權重[-－]股票", body, maxsplit=1)[-1]
                         segment = re.split(r"基金權重[-－](?:期貨|債券|ETF)", segment, maxsplit=1)[0]
-                        # Find visible table cells for desktop layout, and labelled rows for mobile.
-                        cells = page.locator("tr:visible").evaluate_all("(rs) => rs.map(r => Array.from(r.querySelectorAll('td')).map(c => c.innerText))")
-                        rows = fund_rows(segment, cells)
-                        if len(rows) >= expected:
-                            break
-                        more = page.get_by_text(re.compile(r"^(More|更多|顯示更多|展開更多|查看更多|展開|看更多)$", re.I)).filter(visible=True)
-                        if not more.count():
-                            break
-                        clicked = False
-                        for idx in range(more.count()):
-                            try:
-                                more.nth(idx).click(timeout=3000)
-                                clicked = True
-                                break
-                            except Exception:
-                                pass
-                        if not clicked:
-                            break
-                        page.wait_for_timeout(700)
+                        rows = fund_rows(segment)
+                        # Desktop stock table: scope to a table with the stock header.
+                        for table in page.locator("table:visible").all():
+                            txt = table.inner_text()
+                            if "商品代碼" in txt and "商品名稱" in txt and "商品年月" not in txt:
+                                cells = table.locator("tr").evaluate_all("(rs) => rs.map(r => Array.from(r.querySelectorAll('td')).map(c => c.innerText))")
+                                rows.update(fund_rows("", cells))
+                        return segment, rows
+                    segment, rows = read_stock()
                     dates = re.findall(r"(?:Trade Date|資料日期|交易日期|持股日期|日期)\s*[:：]?\s*(20\d{2}[-/]\d{1,2}[-/]\d{1,2})", segment, re.I)
                     if not dates:
                         raise ValueError(f"{fund}：持股區塊找不到資料日期")
                     day = str(pd.Timestamp(dates[0]).date())
+                    preview = dict(rows)
+                    method = "page"
                     if len(rows) != expected:
+                        try:
+                            rows = export_fund_rows(page, fund, expected, preview)
+                            method = "issuer Excel"
+                        except Exception as exc:
+                            print(f"{fund} Excel export unavailable: {exc}")
+                            more = page.get_by_text(re.compile(r"^(More|更多|顯示更多|展開更多|查看更多|展開|看更多)$", re.I))
+                            for attempt in range(30):
+                                candidates = [x for x in more.all() if x.is_visible()]
+                                if not candidates:
+                                    break
+                                try:
+                                    candidates[0].scroll_into_view_if_needed(timeout=4000)
+                                    candidates[0].click(timeout=6000)
+                                except Exception as exc:
+                                    print(f"{fund} More click failed: {exc}")
+                                    break
+                                page.wait_for_timeout(1200)
+                                _, expanded = read_stock()
+                                rows.update(expanded)
+                                # Some layouts show all holdings in a separate modal.
+                                for dialog in page.locator('[role="dialog"]:visible, .modal:visible').all():
+                                    rows.update(fund_rows(dialog.inner_text()))
+                                if len(rows) >= expected:
+                                    break
+                            method = "expanded page"
+                    print(f"{fund}: {len(rows)}/{expected}, date={day}, method={method}")
+                    if len(rows) != expected or not set(preview).issubset(rows):
                         raise ValueError(f"{fund}：預期 {expected} 檔，取得 {len(rows)} 檔")
-                    result[fund] = {"date": day, "members": rows, "source": FUND_URL.format(fund)}
+                    result[fund] = {"date": day, "members": rows, "source": FUND_URL.format(fund), "method": method}
+                except Exception:
+                    try:
+                        page.screenshot(path=str(OUT / f"debug-{fund}.png"), full_page=True)
+                        (OUT / f"debug-{fund}.txt").write_text(page.locator("body").inner_text(), encoding="utf-8")
+                    except Exception:
+                        pass
+                    raise
                 finally:
                     page.close()
         finally:
