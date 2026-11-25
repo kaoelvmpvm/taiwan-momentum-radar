@@ -1,8 +1,12 @@
 # 台股動能雷達 · V0.7
 
-[整合研究首頁](RESEARCH.md) · [歷史監測與個股走勢](HISTORY.md) · [前瞻性模擬帳本](PAPER.md) · [本次執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45632266176)
+[整合研究首頁](RESEARCH.md) · [歷史監測與個股走勢](HISTORY.md) · [前瞻性模擬帳本](PAPER.md) · [本次執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45635667453)
 
-**更新狀態：資料檢查通過**
+**更新狀態：更新未通過**
+
+> 本次更新未通過。下方如有資料，僅為最近一次成功的歷史快照，不代表當前排名。
+
+行情擷取或測試未成功
 
 已累積 1 個成功行情日。 目前尚無跨日名次變動。
 
