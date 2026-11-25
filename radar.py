@@ -32,42 +32,80 @@ def fund_rows(text, tables=()):
     return rows
 
 
+def read_export_tables(raw):
+    """Identify by actual bytes, not file extension."""
+    import csv
+    import io
+    if raw.startswith(b"PK\x03\x04") or raw.startswith(b"\xd0\xcf\x11\xe0"):
+        engine = "openpyxl" if raw.startswith(b"PK") else "xlrd"
+        with pd.ExcelFile(io.BytesIO(raw), engine=engine) as workbook:
+            for sheet in workbook.sheet_names:
+                yield pd.read_excel(workbook, sheet_name=sheet, header=None, dtype=str).fillna("").values.tolist()
+        return
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        encodings = ("utf-16",)
+    else:
+        encodings = ("utf-8-sig", "cp950", "big5")
+    decoded = None
+    for encoding in encodings:
+        try:
+            decoded = raw.decode(encoding)
+            break
+        except UnicodeError:
+            continue
+    if decoded is None:
+        raise ValueError("Unknown export encoding")
+    for delim in (",", "\t", ";"):
+        yield list(csv.reader(io.StringIO(decoded), delimiter=delim))
+
+
+def extract_export_members(tables, expected, preview):
+    """Require an identified stock table and agreement with visible preview."""
+    result = {}
+    for table in tables:
+        for i, line in enumerate(table):
+            labels = [re.sub(r"\s+", "", str(x)).lower() for x in line]
+            codes = [j for j,x in enumerate(labels) if x in ("商品代碼","股票代碼","證券代號","證券代碼","股票代號","代碼","stockcode","code")]
+            names = [j for j,x in enumerate(labels) if x in ("商品名稱","股票名稱","證券名稱","名稱","stockname","name")]
+            if not codes or not names:
+                continue
+            block = {}
+            for row in table[i+1:]:
+                if len(row) <= max(codes[0], names[0]):
+                    if block:
+                        break
+                    continue
+                code = str(row[codes[0]]).strip()
+                # Excel-style CSV may encode identifiers as ="2330".
+                code = re.sub(r'^="([0-9]+)"$', r'\1', code)
+                name = str(row[names[0]]).strip()
+                if CODE.fullmatch(code) and name:
+                    if code in block:
+                        raise ValueError("Duplicate stock code in exported table")
+                    block[code] = name
+                elif block:
+                    break
+            if len(block) == expected and preview and set(preview).issubset(block):
+                if result and result != block:
+                    raise ValueError("Export contains conflicting holding tables")
+                result = block
+    if len(result) != expected:
+        raise ValueError(f"Export did not contain a matching {expected}-stock table")
+    return result
+
+
 def export_fund_rows(page, fund, expected, preview):
-    """Use the issuer's own Excel export. Require full count and matching preview."""
     button = page.get_by_text(re.compile(r"^(?:Export\s*excel|匯出\s*Excel|下載\s*Excel)$", re.I))
     with page.expect_download(timeout=25000) as pending:
         button.first.click(timeout=10000)
     download = pending.value
     path = OUT / ("issuer-" + fund + Path(download.suggested_filename).suffix.lower())
     download.save_as(str(path))
-    result = {}
-    try:
-        with pd.ExcelFile(path) as workbook:
-            for sheet in workbook.sheet_names:
-                table = pd.read_excel(workbook, sheet_name=sheet, header=None, dtype=str).fillna("")
-                for i, line in enumerate(table.values.tolist()):
-                    labels = [re.sub(r"\s+", "", str(x)).lower() for x in line]
-                    codes = [j for j,x in enumerate(labels) if x in ("商品代碼","股票代碼","證券代號","證券代碼","股票代號","代碼","stockcode","code")]
-                    names = [j for j,x in enumerate(labels) if x in ("商品名稱","股票名稱","證券名稱","名稱","stockname","name")]
-                    if not codes or not names:
-                        continue
-                    block = {}
-                    for row in table.iloc[i+1:].values.tolist():
-                        code = str(row[codes[0]]).strip()
-                        name = str(row[names[0]]).strip()
-                        if CODE.fullmatch(code) and name:
-                            block[code] = name
-                        elif block and (not code or "代碼" in code or "代號" in code):
-                            break
-                    if len(block) == expected and set(preview).issubset(block):
-                        if result and result != block:
-                            raise ValueError("Excel contains conflicting full holding tables")
-                        result = block
-        if len(result) != expected:
-            raise ValueError(f"Excel did not contain a matching {expected}-stock table")
-        return result
-    finally:
-        path.unlink(missing_ok=True)
+    raw = path.read_bytes()
+    print(f"{fund} export: {download.suggested_filename}, {len(raw)} bytes, signature={raw[:12].hex()}")
+    result = extract_export_members(read_export_tables(raw), expected, preview)
+    path.unlink(missing_ok=True)
+    return result
 
 
 def fund_snapshot():
@@ -77,7 +115,7 @@ def fund_snapshot():
         browser = p.chromium.launch(headless=True)
         try:
             for fund, expected in EXPECTED.items():
-                page = browser.new_page(viewport={"width": 1440, "height": 1000}, locale="zh-TW", accept_downloads=True)
+                page = browser.new_page(viewport={"width": 390, "height": 844}, locale="zh-TW", accept_downloads=True)
                 try:
                     page.goto(FUND_URL.format(fund), wait_until="domcontentloaded", timeout=60000)
                     page.wait_for_function("document.body.innerText.includes('基金權重-股票') || document.body.innerText.includes('基金權重－股票')", timeout=45000)

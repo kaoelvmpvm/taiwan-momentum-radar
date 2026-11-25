@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from radar import fund_rows, momentum, baseline_date, clean_history, render
+from radar import fund_rows, momentum, baseline_date, clean_history, render, read_export_tables, extract_export_members
 
 class RadarTests(unittest.TestCase):
     def setUp(self):
@@ -22,6 +22,17 @@ class RadarTests(unittest.TestCase):
 
     def test_fund_rows(self):
         self.assertEqual(fund_rows("商品代碼 2330\n商品名稱 台積電\n商品數量 123"),{"2330":"台積電"})
+
+    def test_csv_export(self):
+        csv = '基金名稱,測試\n商品代碼,商品名稱,商品權重\n2330,台積電,60\n2303,聯電,1\n\n商品代碼,商品名稱\n9999,其他\n'
+        raw = csv.encode("utf-8-sig")
+        self.assertEqual(extract_export_members(read_export_tables(raw),2,{"2330":"台積電"}),{"2330":"台積電","2303":"聯電"})
+        with self.assertRaises(ValueError):
+            extract_export_members(read_export_tables(raw),3,{"2330":"台積電"})
+        with self.assertRaises(ValueError):
+            extract_export_members(read_export_tables(raw),2,{})
+        with self.assertRaises(ValueError):
+            extract_export_members(read_export_tables(raw),2,{"9999":"其他"})
 
     def test_duplicate(self):
         with self.assertRaises(ValueError):
