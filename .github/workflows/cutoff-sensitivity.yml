@@ -1,0 +1,38 @@
+name: Pre-2026 cutoff sensitivity
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'cutoff_sensitivity.py'
+      - '.github/workflows/cutoff-sensitivity.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  cutoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: exploratory-150-stock-results
+          run-id: '45622458773'
+          github-token: ${{ github.token }}
+          path: cutoff-input/first
+      - uses: actions/download-artifact@v4
+        with:
+          name: independent-regime-results
+          run-id: '45632267524'
+          github-token: ${{ github.token }}
+          path: cutoff-input/second
+      - run: pip install pandas
+      - run: python cutoff_sensitivity.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pre-2026-cutoff-results
+          path: cutoff-output/
+          retention-days: 30
