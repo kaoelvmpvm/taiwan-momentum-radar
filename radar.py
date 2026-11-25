@@ -299,6 +299,42 @@ def baseline_date(benchmark, asof):
     return candidates.index[-1]
 
 
+# Verified corporate-action registry. Add events only with documented effective date,
+# last old-share trading day, and official exchange ratio, never from price fitting.
+FACE_VALUE_EVENTS = {
+    "6949": {"last_old":"2026-08-26", "first_new":"2026-09-07", "ratio":20.0,
+             "source":"https://www.twse.com.tw/exchangeReport/TWTB7U?date=undefined&response=html&selectType=undefined"}
+}
+
+
+def reconcile_face_value(frame, event, old_close, new_close):
+    """Repair only a documented missing adjustment; never adjust twice."""
+    old, new = pd.Timestamp(event["last_old"]), pd.Timestamp(event["first_new"])
+    ratio = float(event["ratio"])
+    if old not in frame.index or new not in frame.index:
+        raise ValueError("面額變更前後交易日缺漏")
+    if len(frame.loc[old:new]) != 2:
+        raise ValueError("面額變更停牌區間出現非預期價格")
+    before, after = float(frame.at[old,"Adj Close"]), float(frame.at[new,"Adj Close"])
+    if not all(math.isfinite(x) and x > 0 for x in (before, after, old_close, new_close, ratio)):
+        raise ValueError("面額變更價格或換股率無效")
+    observed = after / before
+    raw = new_close / old_close
+    expected = raw * ratio
+    matches = lambda a,b: abs(a/b-1) <= .005
+    if matches(observed, expected):
+        corrected = frame
+        status = "already_adjusted"
+    elif matches(observed, raw) and not matches(observed, expected):
+        corrected = frame.copy()
+        corrected.loc[corrected.index < new, "Adj Close"] /= ratio
+        status = "missing_adjustment_repaired"
+    else:
+        raise ValueError(f"面額變更還原比率無法核對：observed={observed:.6f}, raw={raw:.6f}, expected={expected:.6f}")
+    return corrected, {"status":status,"observed_ratio":observed,"expected_ratio":expected,
+                       "official_old_close":old_close,"official_new_close":new_close, **event}
+
+
 def momentum(frame, asof, base, official):
     t = pd.Timestamp(asof)
     if t not in frame.index or base not in frame.index:
@@ -369,7 +405,15 @@ def main():
                     raise ValueError(errors[c])
                 if c not in market or market[c][0] != asof:
                     raise ValueError("官方當日行情缺漏")
-                score = momentum(frames[c], asof, base, market[c][1])
+                frame = frames[c]
+                event = FACE_VALUE_EVENTS.get(c)
+                if event and base <= pd.Timestamp(event["last_old"]) and pd.Timestamp(asof) >= pd.Timestamp(event["first_new"]):
+                    old_quote = dated_official_market(event["last_old"])[c][1]
+                    new_quote = dated_official_market(event["first_new"])[c][1]
+                    frame, audit = reconcile_face_value(frame, event, old_quote, new_quote)
+                    payload.setdefault("corporate_action_audit", {})[c] = audit
+                    print(f"{c} corporate action audit: {json.dumps(audit, ensure_ascii=False)}")
+                score = momentum(frame, asof, base, market[c][1])
                 payload["ranking"].append({"code":c,"name":name,"group":group,"momentum":score})
             except Exception as exc:
                 payload["issues"].append(f"{c} {name}: {exc}")

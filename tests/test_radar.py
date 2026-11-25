@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from radar import fund_rows, momentum, baseline_date, clean_history, render, read_export_tables, extract_export_members, parse_dated_market
+from radar import fund_rows, momentum, baseline_date, clean_history, render, read_export_tables, extract_export_members, parse_dated_market, reconcile_face_value
 
 class RadarTests(unittest.TestCase):
     def setUp(self):
@@ -43,6 +43,24 @@ class RadarTests(unittest.TestCase):
             parse_dated_market(payload,"2026-11-24")
         with self.assertRaises(ValueError):
             parse_dated_market({"stat":"OK","date":"20261125","tables":[]},"2026-11-25")
+
+    def test_face_value_reconciliation(self):
+        event = {"last_old":"2026-08-26","first_new":"2026-09-07","ratio":20}
+        idx = pd.to_datetime(["2026-08-25","2026-08-26","2026-09-07","2026-09-08"])
+        f = pd.DataFrame({"Close":[980.,1000.,52.,53.],"Adj Close":[980.,1000.,52.,53.]},index=idx)
+        fixed,audit = reconcile_face_value(f,event,1000.,52.)
+        self.assertEqual(audit["status"],"missing_adjustment_repaired")
+        self.assertEqual(fixed.iloc[1]["Adj Close"],50.)
+        self.assertEqual(f.iloc[1]["Adj Close"],1000.)
+        same,audit = reconcile_face_value(fixed,event,1000.,52.)
+        self.assertEqual(audit["status"],"already_adjusted")
+        pd.testing.assert_frame_equal(same,fixed)
+        bad=f.copy()
+        bad.loc[idx[2],"Adj Close"]=100.
+        with self.assertRaises(ValueError):
+            reconcile_face_value(bad,event,1000.,52.)
+        with self.assertRaises(ValueError):
+            reconcile_face_value(f.drop(idx[1]),event,1000.,52.)
 
     def test_duplicate(self):
         with self.assertRaises(ValueError):

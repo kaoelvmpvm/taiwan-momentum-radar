@@ -26,3 +26,7 @@ GitHub Actions → Daily momentum radar → Run workflow。完成後在該次 ru
 - https://ranaroussi.github.io/yfinance/reference/yfinance.functions.html
 
 V0.1 僅是資料可行性測試；公司行動還原歷史資料尚未獨立驗證，任何排名都不能作為實盤操作依據。
+
+## 公司行動核對
+
+已登錄6949於2026-09-07恢復交易之20:1面額變更（最後舊股交易日2026-08-26）。若12個月視窗跨越事件，向TWSE指定日期行情查詢前後收盤，判定Yahoo還原價是否已正確調整；僅在確認遺漏時按官方比例修正事件前還原價格。無法核對則維持不完整狀態，不排除股票。紀錄保存在ranking.json的corporate_action_audit。這是已知事件的查核，並非完整市場公司行動資料庫。
