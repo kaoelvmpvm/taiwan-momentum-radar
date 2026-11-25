@@ -1,0 +1,48 @@
+name: PIT effective-date and reduction audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pit_timing_audit.py'
+      - 'pit_timing_tests.py'
+      - 'backtest/pit_timing_evidence.json'
+      - '.github/workflows/pit-timing.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-expanded-audit
+          run-id: '45718400966'
+          github-token: ${{ github.token }}
+          path: pit-expanded-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-reconcile-audit
+          run-id: '45717164913'
+          github-token: ${{ github.token }}
+          path: pit-reconcile-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: independent-regime-results
+          run-id: '45632267524'
+          github-token: ${{ github.token }}
+          path: pit-benchmark
+      - run: pip install -r requirements.txt beautifulsoup4
+      - run: python -m unittest pit_timing_tests -v
+      - run: python -u pit_timing_audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-timing-audit
+          path: pit-timing-output/
+          retention-days: 30

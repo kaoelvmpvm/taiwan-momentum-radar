@@ -1,0 +1,116 @@
+{
+  "source_run": 45718400966,
+  "delays": [
+    {
+      "scheduled": "2026-03-23",
+      "effective": "2026-04-14",
+      "code": "3037",
+      "changes": [
+        [
+          "0050",
+          "add"
+        ],
+        [
+          "0051",
+          "remove"
+        ]
+      ],
+      "source": "https://wealth.firstbank.com.tw/investment-tips/trend-insight/news/news-detail?id=%7BA7463EAA-6A65-4384-8574-8F03-9C084D3EDA22%7D"
+    },
+    {
+      "scheduled": "2026-03-23",
+      "effective": "2026-04-17",
+      "code": "2337",
+      "changes": [
+        [
+          "0051",
+          "add"
+        ]
+      ],
+      "source": "https://money.udn.com/money/story/5612/9445697?from=edn_search_tag_result"
+    },
+    {
+      "scheduled": "2026-06-22",
+      "effective": "2026-07-03",
+      "code": "8454",
+      "changes": [
+        [
+          "0051",
+          "remove"
+        ]
+      ],
+      "source": "https://fund.scsb.com.tw/w/wp/wp05A.djhtm?a=%7B4BF22BF9-6A12-4F2C-841E-122C8BCDEAB4%7D&c=1&type=news"
+    },
+    {
+      "scheduled": "2026-06-22",
+      "effective": "2026-07-08",
+      "code": "6890",
+      "changes": [
+        [
+          "0051",
+          "remove"
+        ]
+      ],
+      "source": "https://www.moneydj.com/funddj/ya/yp050000.djhtm?a=5F0EB865-56EE-4C25-A148-C71E13F5A27D"
+    },
+    {
+      "scheduled": "2026-06-22",
+      "effective": "2026-07-10",
+      "code": "3167",
+      "changes": [
+        [
+          "0051",
+          "add"
+        ]
+      ],
+      "source": "https://www.moneydj.com/funddj/ya/yp050000.djhtm?a=D8755EF4-7C95-4973-A5E2-072E415363C3"
+    },
+    {
+      "scheduled": "2026-06-22",
+      "effective": "2026-07-14",
+      "code": "3026",
+      "changes": [
+        [
+          "0051",
+          "add"
+        ]
+      ],
+      "source": "https://www.moneydj.com/kmdj/news/newsviewer.aspx?a=62a59010-201c-46a4-8b16-05be3a00054d&c=MB00"
+    }
+  ],
+  "suspensions": [
+    {
+      "code": "5264",
+      "date": "2020-08-13",
+      "resumed": "2020-08-14",
+      "source": "https://finance.ftvnews.com.tw/news/detail/2020813W0097"
+    },
+    {
+      "code": "2888",
+      "date": "2024-08-22",
+      "resumed": "2024-08-23",
+      "source": "https://goodinfo.tw/tw/StockAnnounceDetail.asp?CLAIM_TIME=2024%2F08%2F22+21%3A33%3A59&STOCK_ID=2888&SUBJECT=%E6%96%B0%E5%85%89%E9%87%91%E7%B6%93%E8%AD%89%E4%BA%A4%E6%89%80%E5%90%8C%E6%84%8F%EF%BC%8C%E8%87%AA113%E5%B9%B4+8%E6%9C%8823%E6%97%A5%E6%81%A2%E5%BE%A9%E4%BA%A4%E6%98%93"
+    },
+    {
+      "code": "2867",
+      "date": "2025-11-05",
+      "resumed": "2025-11-06",
+      "source": "https://news.cnyes.com/news/id/6218381",
+      "resume_source": "https://news.cnyes.com/news/id/6220483"
+    }
+  ],
+  "reduction": {
+    "code": "3682",
+    "effective": "2020-01-20",
+    "share_ratio": 0.65543142,
+    "cash_return": 0,
+    "halt_start": "2020-01-09",
+    "source": "https://news.cnyes.com/news/id/4424911",
+    "formula_source": "https://www.twse.com.tw/zh/announcement/reduction/twtauu.html"
+  },
+  "limitations": [
+    "Delay dates supported by reproduced exchange/index notices; not exhaustive technical notice archive.",
+    "ETF disclosures are independent holdings evidence, not official index rosters.",
+    "Reduction reference adjustment only; no settlement model yet."
+  ]
+}
