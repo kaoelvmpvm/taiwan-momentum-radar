@@ -52,7 +52,7 @@ def update(payload,previous,run_result):
         return previous,"更新未通過",str(exc)
 
 def markdown(current,status,error,run_url,issues=(),history=()):
-    lines=["# 台股動能雷達 · V0.3","","[歷史監測與個股走勢](HISTORY.md) · [本次執行紀錄]("+run_url+")","","**更新狀態："+cell(status)+"**",""]
+    lines=["# 台股動能雷達 · V0.6","","[歷史監測與個股走勢](HISTORY.md) · [前瞻性模擬帳本](PAPER.md) · [本次執行紀錄]("+run_url+")","","**更新狀態："+cell(status)+"**",""]
     if error:
         lines += ["> 本次更新未通過。下方如有資料，僅為最近一次成功的歷史快照，不代表當前排名。","",cell(error),""]
         lines += ["- "+cell(x) for x in issues[:20]]
@@ -85,7 +85,7 @@ def markdown(current,status,error,run_url,issues=(),history=()):
     lines += ["","### 全部151檔","","| 排名 | 代碼 | 名稱 | 群組 | 12月動能 | 相對0050（百分點） | 名次變動 |","|---:|---|---|---|---:|---:|---:|"]
     lines += [row_text(i,x,True) for i,x in enumerate(rows,1)]
     lines += ["","## 方法與限制","","完整12個月還原價格報酬；元大0050及0051持股代理池＋0050 ETF。相對0050為報酬差（百分點），不是風險調整後超額報酬。",
-              "每日快照僅供研究；正式月底換股規則尚未啟用。歷史公司行動尚未全面獨立查核。不得據此直接下單。",
+              "每日快照僅供研究；月底規則僅用於前瞻性模擬帳本。歷史公司行動尚未全面獨立查核。不得據此直接下單。",
               "資料若未更新，請以行情日期和本次執行狀態為準。此為私人研究頁面，非公開 GitHub Pages。",""]
     return "\n".join(lines)
 

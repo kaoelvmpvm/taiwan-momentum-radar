@@ -10,6 +10,8 @@ on:
       - 'verified_corporate_actions.json'
       - 'dashboard.py'
       - 'rank_history.py'
+      - 'paper.py'
+      - 'paper_calendar.json'
       - 'requirements.txt'
       - 'tests/**'
 permissions:
@@ -48,7 +50,7 @@ jobs:
     needs: radar
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
     permissions:
       contents: write
     steps:
@@ -67,6 +69,20 @@ jobs:
           RADAR_RESULT: ${{ needs.radar.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: python3 dashboard.py --run-result "$RADAR_RESULT" --run-url "$RUN_URL"
+      - uses: actions/setup-python@v5
+        if: ${{ always() && !cancelled() }}
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install paper research dependencies
+        if: ${{ always() && !cancelled() }}
+        run: pip install -r requirements.txt
+      - name: Update forward paper experiment
+        id: paper
+        if: ${{ always() && !cancelled() && steps.dashboard.outcome == 'success' }}
+        env:
+          RADAR_RESULT: ${{ needs.radar.result }}
+        run: python paper.py --run-result "$RADAR_RESULT"
       - name: Save private dashboard snapshot
         if: ${{ always() && !cancelled() && (steps.dashboard.outcome == 'success' || steps.dashboard.outcome == 'failure') }}
         run: |
