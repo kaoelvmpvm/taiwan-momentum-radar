@@ -1,0 +1,32 @@
+name: M8 drawdown diagnosis
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'm8_diagnosis.py'
+      - '.github/workflows/m8-diagnosis.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: independent-regime-results
+          run-id: '45632267524'
+          github-token: ${{ github.token }}
+          path: m8-input
+      - run: pip install pandas
+      - run: python m8_diagnosis.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m8-diagnosis
+          path: m8-output/
+          retention-days: 30
