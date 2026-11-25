@@ -1,0 +1,211 @@
+{
+  "source_run": 45717164913,
+  "reserve": {
+    "rows": [
+      {
+        "code": "6191",
+        "cap": 60665314500,
+        "shares": 499303000,
+        "close": 121.5
+      },
+      {
+        "code": "6691",
+        "cap": 56005603349,
+        "shares": 121487209,
+        "close": 461
+      },
+      {
+        "code": "2889",
+        "cap": 55411842933,
+        "shares": 3633563471,
+        "close": 15.25
+      },
+      {
+        "code": "2498",
+        "cap": 52701024467,
+        "shares": 835198486,
+        "close": 63.1
+      },
+      {
+        "code": "3596",
+        "cap": 49800076546,
+        "shares": 220354321,
+        "close": 226
+      },
+      {
+        "code": "1717",
+        "cap": 48898017544,
+        "shares": 1178265483,
+        "close": 41.5
+      },
+      {
+        "code": "1560",
+        "cap": 47905794135,
+        "shares": 146277234,
+        "close": 327.5
+      },
+      {
+        "code": "3189",
+        "cap": 46802233900,
+        "shares": 456607160,
+        "close": 102.5
+      },
+      {
+        "code": "9958",
+        "cap": 43415536385,
+        "shares": 256896665,
+        "close": 169
+      },
+      {
+        "code": "3030",
+        "cap": 43345636000,
+        "shares": 236216000,
+        "close": 183.5
+      }
+    ],
+    "winner": "6191",
+    "source_sha256": [
+      "704f4f656cdcb36d0459070d8fb979b3fb34a076e16aefc4e1a7c8575c673520",
+      "60117819552b2d8ae557a55eb9fc5fc5992b0d2333a0a27041ebcf10073191a1"
+    ]
+  },
+  "reverse": {
+    "passed": 32,
+    "blocked": false
+  },
+  "checkpoints": [
+    {
+      "quarter": "2020Q2",
+      "groups": {
+        "0050": {
+          "count": 50,
+          "missing": [],
+          "extra": [],
+          "extra_details": {}
+        },
+        "0051": {
+          "count": 100,
+          "missing": [],
+          "extra": [],
+          "extra_details": {}
+        }
+      }
+    },
+    {
+      "quarter": "2021Q4",
+      "groups": {
+        "0050": {
+          "count": 50,
+          "missing": [],
+          "extra": [],
+          "extra_details": {}
+        },
+        "0051": {
+          "count": 100,
+          "missing": [],
+          "extra": [],
+          "extra_details": {}
+        }
+      }
+    },
+    {
+      "quarter": "2025Q3",
+      "groups": {
+        "0050": {
+          "count": 51,
+          "missing": [],
+          "extra": [
+            "6446"
+          ],
+          "extra_details": {
+            "6446": {
+              "name": "藥華藥",
+              "weight": "0.03%"
+            }
+          }
+        },
+        "0051": {
+          "count": 100,
+          "missing": [],
+          "extra": [],
+          "extra_details": {}
+        }
+      }
+    },
+    {
+      "quarter": "2026Q3",
+      "groups": {
+        "0050": {
+          "count": 50,
+          "missing": [],
+          "extra": [],
+          "extra_details": {}
+        },
+        "0051": {
+          "count": 100,
+          "missing": [],
+          "extra": [],
+          "extra_details": {}
+        }
+      }
+    }
+  ],
+  "ex_rights": {
+    "2019": {
+      "status": "parsed",
+      "all_rows": 880,
+      "sha256": "5f5822ebb76a0877684d2ae892533c14b058d6d57af1de57fffa75e620245493"
+    },
+    "2020": {
+      "status": "parsed",
+      "all_rows": 888,
+      "sha256": "ab6af548b7caad23e798659874bd4556a3ceaa818d0de3d00ead8cb9770b9026"
+    },
+    "2021": {
+      "status": "parsed",
+      "all_rows": 973,
+      "sha256": "8f370b4cc74f5dfb79909620a3bde13804f04e994b7419fffa6253302a22ac17"
+    },
+    "2022": {
+      "status": "parsed",
+      "all_rows": 1027,
+      "sha256": "bc4cfd24ef1f4b6d7809d2180bbecd9be0846fbc9b5a9443f685ae566082e97b"
+    },
+    "2023": {
+      "status": "parsed",
+      "all_rows": 1086,
+      "sha256": "e029dc9827715d92268c134ace492011e5c512e8a6e5c39d80a5b34534588d82"
+    },
+    "2024": {
+      "status": "parsed",
+      "all_rows": 1184,
+      "sha256": "6ad0c3bc40911405cb85ac4e0817fadcac5901ac5e167680ad16ae5735abd617"
+    },
+    "2025": {
+      "status": "parsed",
+      "all_rows": 1358,
+      "sha256": "4169030f15ffcc528f8718a58fb5e1193ef8b67f2c9e40c05574f570cca7f7ee"
+    },
+    "2026": {
+      "status": "parsed",
+      "all_rows": 1449,
+      "sha256": "726080efbb309fecee6b41fddeddf27b146653c856f74a5f8066a2d5ab9a6f4d"
+    }
+  },
+  "extra_raw": {
+    "2448": {
+      "expected_months": 19,
+      "errors": [],
+      "rows": 384,
+      "last": "2020-12-23",
+      "complete": true
+    },
+    "2809": {
+      "expected_months": 76,
+      "errors": [],
+      "rows": 1535,
+      "last": "2025-09-17",
+      "complete": true
+    }
+  }
+}

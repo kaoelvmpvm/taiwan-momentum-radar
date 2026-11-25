@@ -1,0 +1,53 @@
+name: PIT expanded checkpoints and reference-adjusted price audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pit_expanded_audit.py'
+      - 'pit_expanded_tests.py'
+      - '.github/workflows/pit-expanded.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: retired-stock-source-audit
+          run-id: '45715484309'
+          github-token: ${{ github.token }}
+          path: pit-retired-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-reconcile-audit
+          run-id: '45717164913'
+          github-token: ${{ github.token }}
+          path: pit-reconcile-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-quarterly-checkpoints
+          run-id: '45715938739'
+          github-token: ${{ github.token }}
+          path: pit-checkpoint-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: independent-regime-results
+          run-id: '45632267524'
+          github-token: ${{ github.token }}
+          path: pit-benchmark
+      - run: pip install -r requirements.txt beautifulsoup4
+      - run: python -m unittest pit_expanded_tests -v
+      - run: python -u pit_expanded_audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-expanded-audit
+          path: pit-expanded-output/
+          retention-days: 30
