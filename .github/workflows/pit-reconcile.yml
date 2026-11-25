@@ -1,0 +1,34 @@
+name: PIT reconcile corporate events and ex-rights
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pit_reconcile.py'
+      - 'backtest/pit_extra_actions.json'
+      - '.github/workflows/pit-reconcile.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-quarterly-checkpoints
+          run-id: '45715938739'
+          github-token: ${{ github.token }}
+          path: pit-old-checkpoints
+      - run: pip install -r requirements.txt beautifulsoup4
+      - run: python -u pit_reconcile.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-reconcile-audit
+          path: pit-reconcile-output/
+          retention-days: 30
