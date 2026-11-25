@@ -322,6 +322,22 @@ def verify_suspended_rows(frame, event, code, quote_lookup):
     return frame.drop(index=extra), removed
 
 
+def verified_event_quotes(code, event, evidence, live_lookup):
+    """Use narrowly scoped, previously verified historical facts, not daily quote data."""
+    cached = evidence.get(code)
+    if not cached or any(cached.get(k) != event.get(k) for k in ("last_old","first_new","ratio")):
+        return live_lookup(event["last_old"])[code][1], live_lookup(event["first_new"])[code][1], live_lookup, "live"
+    old, new = cached["old_close"], cached["new_close"]
+    if not all(math.isfinite(x) and x > 0 for x in (old,new)):
+        raise ValueError("歷史公司行動查核紀錄無效")
+    verified = set(cached["no_quote_dates"])
+    def suspended_lookup(day):
+        if day in verified and event["last_old"] < day < event["first_new"]:
+            return {}
+        return live_lookup(day)
+    return old, new, suspended_lookup, cached["verified_run"]
+
+
 def reconcile_face_value(frame, event, old_close, new_close):
     """Repair only a documented missing adjustment; never adjust twice."""
     old, new = pd.Timestamp(event["last_old"]), pd.Timestamp(event["first_new"])
@@ -423,14 +439,15 @@ def main():
                 frame = frames[c]
                 event = FACE_VALUE_EVENTS.get(c)
                 if event and base <= pd.Timestamp(event["last_old"]) and pd.Timestamp(asof) >= pd.Timestamp(event["first_new"]):
-                    old_quote = dated_official_market(event["last_old"])[c][1]
-                    new_quote = dated_official_market(event["first_new"])[c][1]
+                    evidence = json.loads((ROOT/"verified_corporate_actions.json").read_text(encoding="utf-8"))
+                    old_quote, new_quote, event_lookup, evidence_source = verified_event_quotes(c, event, evidence, dated_official_market)
                     extra = frame.loc[event["last_old"]:event["first_new"], ["Close","Adj Close"]]
                     print(f"{c} vendor event window: {extra.to_string()}")
                     print(f"{c} official event quotes: {old_quote}, {new_quote}")
-                    frame, removed = verify_suspended_rows(frame, event, c, dated_official_market)
+                    frame, removed = verify_suspended_rows(frame, event, c, event_lookup)
                     frame, audit = reconcile_face_value(frame, event, old_quote, new_quote)
                     audit["verified_nontrading_rows_removed"] = removed
+                    audit["historical_evidence"] = evidence_source
                     payload.setdefault("corporate_action_audit", {})[c] = audit
                     print(f"{c} corporate action audit: {json.dumps(audit, ensure_ascii=False)}")
                 score = momentum(frame, asof, base, market[c][1])

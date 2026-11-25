@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/radar.yml'
       - 'radar.py'
+      - 'verified_corporate_actions.json'
       - 'dashboard.py'
       - 'rank_history.py'
       - 'requirements.txt'

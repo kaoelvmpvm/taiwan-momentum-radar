@@ -1,0 +1,21 @@
+{
+  "6949": {
+    "last_old": "2026-08-26",
+    "first_new": "2026-09-07",
+    "ratio": 20,
+    "old_close": 1490,
+    "new_close": 67.1,
+    "no_quote_dates": [
+      "2026-08-27",
+      "2026-08-28",
+      "2026-08-31",
+      "2026-09-01",
+      "2026-09-02",
+      "2026-09-03",
+      "2026-09-04"
+    ],
+    "verified_run": "https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45617307333",
+    "verified_source": "TWSE MI_INDEX exact-date query",
+    "verified_on": "2026-11-25"
+  }
+}

@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from radar import fund_rows, momentum, baseline_date, clean_history, render, read_export_tables, extract_export_members, parse_dated_market, reconcile_face_value, verify_suspended_rows
+from radar import fund_rows, momentum, baseline_date, clean_history, render, read_export_tables, extract_export_members, parse_dated_market, reconcile_face_value, verify_suspended_rows, verified_event_quotes
 
 class RadarTests(unittest.TestCase):
     def setUp(self):
@@ -72,6 +72,21 @@ class RadarTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verify_suspended_rows(f,event,"6949",lambda day:{"6949":(day,50.)})
         self.assertEqual(len(f),4)
+
+    def test_verified_event_quotes(self):
+        event={"last_old":"2026-08-26","first_new":"2026-09-07","ratio":20.0}
+        evidence={"6949":dict(event,old_close=1490.,new_close=67.1,no_quote_dates=["2026-08-27"],verified_run="prior_verified_run")}
+        calls=[]
+        def live(day):
+            calls.append(day)
+            return {"6949":(day,100.)}
+        old,new,lookup,source=verified_event_quotes("6949",event,evidence,live)
+        self.assertEqual((old,new,source),(1490.,67.1,"prior_verified_run"))
+        self.assertEqual(lookup("2026-08-27"),{})
+        self.assertEqual(calls,[])
+        self.assertIn("6949",lookup("2026-08-28"))
+        self.assertEqual(calls,["2026-08-28"])
+        self.assertEqual(verified_event_quotes("9999",event,{},lambda day:{"9999":(day,100.)})[3],"live")
 
     def test_duplicate(self):
         with self.assertRaises(ValueError):
