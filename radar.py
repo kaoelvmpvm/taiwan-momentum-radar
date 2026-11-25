@@ -186,6 +186,49 @@ def fund_snapshot():
     return result
 
 
+def parse_dated_market(data, expected_date):
+    """Verify exact response date and select the official stock quote table by fields."""
+    if not isinstance(data, dict) or data.get("stat") != "OK":
+        raise ValueError("證交所指定日行情尚未發布或查詢失敗")
+    expected = pd.Timestamp(expected_date).strftime("%Y%m%d")
+    if str(data.get("date", "")).strip() != expected:
+        raise ValueError(f"指定日期行情回傳日期不符：{data.get('date')} / {expected}")
+    candidates = [t for t in data.get("tables", []) if
+                  {"證券代號", "收盤價", "成交股數"}.issubset(t.get("fields", []))]
+    if len(candidates) != 1:
+        raise ValueError("找不到唯一的證券收盤行情表")
+    table = candidates[0]
+    fields = table["fields"]
+    i, j = fields.index("證券代號"), fields.index("收盤價")
+    result = {}
+    seen = set()
+    for row in table.get("data", []):
+        if len(row) <= max(i, j):
+            continue
+        stock = str(row[i]).strip()
+        if stock in seen:
+            raise ValueError(f"指定日行情含重複代碼：{stock}")
+        seen.add(stock)
+        try:
+            price = float(str(row[j]).strip().replace(",", ""))
+        except (ValueError, TypeError):
+            continue
+        if math.isfinite(price) and price > 0:
+            result[stock] = (str(pd.Timestamp(expected_date).date()), price)
+    if len(result) < 500 or "0050" not in result:
+        raise ValueError("指定日行情筆數不足或缺少0050")
+    return result
+
+
+def dated_official_market(expected_date):
+    url = "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
+    response = requests.get(url, params={"date":pd.Timestamp(expected_date).strftime("%Y%m%d"),
+                                           "type":"ALLBUT0999","response":"json"},
+                            timeout=45, headers={"User-Agent":"Mozilla/5.0","Accept":"application/json"})
+    response.raise_for_status()
+    return parse_dated_market(response.json(), expected_date)
+
+
 def official_market():
     response = requests.get(MARKET, timeout=45, headers={"User-Agent": "MomentumRadarResearch/0.1"})
     response.raise_for_status()
@@ -296,7 +339,19 @@ def main():
     try:
         funds = fund_snapshot()
         payload["funds"] = funds
-        market = official_market()
+        expected_date = funds["0050"]["date"]
+        payload["asof"] = expected_date
+        try:
+            market = official_market()
+            print(f"TWSE OpenAPI date: {market['0050'][0]}, expected: {expected_date}")
+            if market["0050"][0] != expected_date:
+                raise ValueError("OpenAPI日期未同步")
+            payload["market_source"] = MARKET
+        except Exception as exc:
+            print(f"OpenAPI unavailable for expected date: {exc}; trying official dated MI_INDEX")
+            market = dated_official_market(expected_date)
+            payload["market_source"] = "TWSE MI_INDEX"
+            print(f"TWSE MI_INDEX date: {market['0050'][0]}, {len(market)} valid quotes")
         asof = market["0050"][0]
         payload["asof"] = asof
         if any(f["date"] != asof for f in funds.values()):

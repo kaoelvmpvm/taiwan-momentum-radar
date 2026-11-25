@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from radar import fund_rows, momentum, baseline_date, clean_history, render, read_export_tables, extract_export_members
+from radar import fund_rows, momentum, baseline_date, clean_history, render, read_export_tables, extract_export_members, parse_dated_market
 
 class RadarTests(unittest.TestCase):
     def setUp(self):
@@ -33,6 +33,16 @@ class RadarTests(unittest.TestCase):
             extract_export_members(read_export_tables(raw),2,{})
         with self.assertRaises(ValueError):
             extract_export_members(read_export_tables(raw),2,{"9999":"其他"})
+
+    def test_dated_market(self):
+        rows = [["0050","1,000","90.30"]] + [[str(1000+i),"500","100.00"] for i in range(500)]
+        payload = {"stat":"OK","date":"20261125","tables":[{"fields":["證券代號","成交股數","收盤價"],"data":rows}]}
+        parsed = parse_dated_market(payload,"2026-11-25")
+        self.assertEqual(parsed["0050"],("2026-11-25",90.30))
+        with self.assertRaises(ValueError):
+            parse_dated_market(payload,"2026-11-24")
+        with self.assertRaises(ValueError):
+            parse_dated_market({"stat":"OK","date":"20261125","tables":[]},"2026-11-25")
 
     def test_duplicate(self):
         with self.assertRaises(ValueError):
