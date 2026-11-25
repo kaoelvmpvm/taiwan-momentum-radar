@@ -1,0 +1,27 @@
+name: PIT reserve and former-member source audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pit_source_audit.py'
+      - 'backtest/pit_regular_events.json'
+      - '.github/workflows/pit-source-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt beautifulsoup4
+      - run: python -u pit_source_audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-source-audit
+          path: pit-source-output/
+          retention-days: 30
