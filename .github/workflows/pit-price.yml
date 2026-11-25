@@ -1,0 +1,33 @@
+name: PIT historical price endpoint audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pit_price_audit.py'
+      - '.github/workflows/pit-price.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-timing-audit
+          run-id: '45720708521'
+          github-token: ${{ github.token }}
+          path: pit-timing-input
+      - run: pip install -r requirements.txt beautifulsoup4
+      - run: python -u pit_price_audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-price-audit
+          path: pit-price-output/
+          retention-days: 30
