@@ -1,0 +1,28 @@
+name: Point-in-time official review audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pit_review_audit.py'
+      - 'pit_review_tests.py'
+      - '.github/workflows/pit-review-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests beautifulsoup4
+      - run: python -m unittest pit_review_tests -v
+      - run: python -u pit_review_audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: official-review-audit
+          path: pit-audit-output/
+          retention-days: 30
