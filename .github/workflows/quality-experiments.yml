@@ -1,0 +1,29 @@
+name: Theory-driven momentum quality experiments
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'quality_experiments.py'
+      - '.github/workflows/quality-experiments.yml'
+      - 'tests/test_quality_experiments.py'
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt scipy
+      - run: python -m unittest discover -s tests -p 'test_quality_experiments.py' -v
+      - run: python -u quality_experiments.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-experiment-results
+          path: quality-output/
+          retention-days: 30
