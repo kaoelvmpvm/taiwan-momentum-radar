@@ -1,0 +1,78 @@
+{
+  "source_run": 45714810965,
+  "reserve": {
+    "status": "computed_from_official_dated_shares_and_close",
+    "rows": [
+      {
+        "code": "5434",
+        "shares": 191332275,
+        "close": 276,
+        "market_cap": 52807707900
+      },
+      {
+        "code": "6691",
+        "shares": 105757138,
+        "close": 464.5,
+        "market_cap": 49124190601
+      },
+      {
+        "code": "2504",
+        "shares": 1180000000,
+        "close": 39.5,
+        "market_cap": 46610000000
+      },
+      {
+        "code": "6412",
+        "shares": 400769126,
+        "close": 115.5,
+        "market_cap": 46288834053
+      },
+      {
+        "code": "3596",
+        "shares": 220354321,
+        "close": 202.5,
+        "market_cap": 44621750002
+      },
+      {
+        "code": "2597",
+        "shares": 258930000,
+        "close": 168.5,
+        "market_cap": 43629705000
+      },
+      {
+        "code": "6005",
+        "shares": 2170908097,
+        "close": 20.05,
+        "market_cap": 43526707344
+      },
+      {
+        "code": "2606",
+        "shares": 845055712,
+        "close": 49.1,
+        "market_cap": 41492235459
+      },
+      {
+        "code": "2637",
+        "shares": 746409199,
+        "close": 54,
+        "market_cap": 40306096746
+      },
+      {
+        "code": "6670",
+        "shares": 139386973,
+        "close": 279.5,
+        "market_cap": 38958658953
+      }
+    ],
+    "winner": "5434",
+    "matches_prior_inference": true,
+    "source_sha256": [
+      "0da062542a55b2bf6c988bfd3d07564e6a9949acff0d09a026749babe2e1abab",
+      "06910fbd2a5279d49db1d9a5675e308a98f0a3503935b01f7699155fc84ffe13"
+    ],
+    "reverse_passed": 30,
+    "reverse_blocked": false,
+    "first_conflict": null,
+    "caveat": "Rule reconstruction, not an independent full index roster; eligibility/reserve changes still need confirmation."
+  }
+}
