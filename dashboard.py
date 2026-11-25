@@ -52,7 +52,7 @@ def update(payload,previous,run_result):
         return previous,"更新未通過",str(exc)
 
 def markdown(current,status,error,run_url,issues=(),history=()):
-    lines=["# 台股動能雷達 · V0.6","","[歷史監測與個股走勢](HISTORY.md) · [前瞻性模擬帳本](PAPER.md) · [本次執行紀錄]("+run_url+")","","**更新狀態："+cell(status)+"**",""]
+    lines=["# 台股動能雷達 · V0.7","","[整合研究首頁](RESEARCH.md) · [歷史監測與個股走勢](HISTORY.md) · [前瞻性模擬帳本](PAPER.md) · [本次執行紀錄]("+run_url+")","","**更新狀態："+cell(status)+"**",""]
     if error:
         lines += ["> 本次更新未通過。下方如有資料，僅為最近一次成功的歷史快照，不代表當前排名。","",cell(error),""]
         lines += ["- "+cell(x) for x in issues[:20]]

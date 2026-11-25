@@ -11,6 +11,7 @@ on:
       - 'dashboard.py'
       - 'rank_history.py'
       - 'paper.py'
+      - 'research_view.py'
       - 'paper_calendar.json'
       - 'requirements.txt'
       - 'tests/**'
@@ -83,6 +84,13 @@ jobs:
         env:
           RADAR_RESULT: ${{ needs.radar.result }}
         run: python paper.py --run-result "$RADAR_RESULT"
+      - name: Render integrated research view
+        if: ${{ always() && !cancelled() }}
+        env:
+          RADAR_RESULT: ${{ needs.radar.result }}
+          PAPER_RESULT: ${{ steps.paper.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 research_view.py --radar-result "$RADAR_RESULT" --paper-result "$PAPER_RESULT" --run-url "$RUN_URL"
       - name: Save private dashboard snapshot
         if: ${{ always() && !cancelled() && (steps.dashboard.outcome == 'success' || steps.dashboard.outcome == 'failure') }}
         run: |
