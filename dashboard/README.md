@@ -1,14 +1,8 @@
 # 台股動能雷達 · V0.3
 
-[歷史監測與個股走勢](HISTORY.md) · [本次執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45618877643)
+[歷史監測與個股走勢](HISTORY.md) · [本次執行紀錄](https://github.com/kaoelvmpvm/taiwan-momentum-radar/actions/runs/45619451389)
 
-**更新狀態：更新未通過**
-
-> 本次更新未通過。下方如有資料，僅為最近一次成功的歷史快照，不代表當前排名。
-
-行情擷取或測試未成功
-
-- 6949 沛爾*-創: HTTPSConnectionPool(host='www.twse.com.tw', port=443): Max retries exceeded with url: /rwd/zh/afterTrading/MI_INDEX?date=20260826&amp;type=ALLBUT0999&amp;response=json (Caused by NameResolutionError("HTTPSConnection(host='www.twse.com.tw', port=443): Failed to resolve 'www.twse.com.tw' ([Errno -2] Name or service not known)"))
+**更新狀態：資料檢查通過**
 
 已累積 1 個成功行情日。 目前尚無跨日名次變動。
 
@@ -21,7 +15,7 @@
 | 資料覆蓋率 | 151／151 |
 | 0050 全池排名 | 49 |
 | 0050 12個月報酬 | +52.66% |
-| 產製時間 | 2026-11-25T20:55:03+08:00 |
+| 產製時間 | 2026-11-25T21:02:27+08:00 |
 
 ### 前五名（快照）
 
