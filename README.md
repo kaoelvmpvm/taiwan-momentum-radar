@@ -1,6 +1,6 @@
 # 台股動能雷達 Taiwan Momentum Radar
 
-## V0.1｜資料驗證與每日研究排行榜
+## V0.2｜私人瀏覽器排行榜與資料驗證
 
 本專案只作研究及模擬交易，不連接券商、不下單，也不使用生成式 AI API。
 
@@ -13,6 +13,8 @@
 - Yahoo 及投信資料有使用條款限制；先保留私有研究，不對外發布原始價量，不保證免費服務可長期維持。
 
 ## 使用方法
+
+**[開啟私人動能排行榜](dashboard/README.md)**：登入 GitHub 後直接瀏覽，無須下載。每日執行成功後更新；失敗時保留上次成功資料並醒目標記。歷史快照可由該頁的 Git commit history 檢視。未開放公開 GitHub Pages。
 
 GitHub Actions → Daily momentum radar → Run workflow。完成後在該次 run 的 Artifacts 下載 radar-report，解壓並開啟 index.html。報告為單一 HTML 檔，不需要伺服器。每次 run 的報告會保留 30 天。尚未上線 GitHub Pages。
 
