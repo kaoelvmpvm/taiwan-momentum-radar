@@ -1,0 +1,86 @@
+{
+  "2823": {
+    "last": "2021-12-17",
+    "delisted": "2021-12-30",
+    "cash": 11.5,
+    "shares": [
+      {
+        "code": "2883",
+        "ratio": 0.8
+      },
+      {
+        "code": "2883B",
+        "ratio": 0.73
+      }
+    ],
+    "payment_date": null,
+    "sources": [
+      "https://www.kgi.com/zh-tw/press/news-detail-content?dtlsrc=ce44e7f6813e4e76a4eacf65ef9388d8&id=6accb730aeef458d9d57f9fea95b0ff2",
+      "https://www.moneydj.com/KMDJ/news/newsviewer.aspx?a=747896a0-e6d8-4431-a78d-dc2aa950d891"
+    ]
+  },
+  "2867": {
+    "last": "2026-08-19",
+    "delisted": "2026-09-01",
+    "cash": 0,
+    "shares": [
+      {
+        "code": "2884",
+        "ratio": 0.2596
+      }
+    ],
+    "payment_date": null,
+    "sources": [
+      "https://www.twse.com.tw/company/suspendListingCsvAndHtml?lang=zh&type=html",
+      "https://www.cna.com.tw/news/afe/202607130297.aspx"
+    ]
+  },
+  "2888": {
+    "last": "2025-07-11",
+    "delisted": "2025-07-24",
+    "cash": 0,
+    "shares": [
+      {
+        "code": "2887",
+        "ratio": 0.672
+      },
+      {
+        "code": null,
+        "name": "台新金辛種特別股",
+        "ratio": 0.175
+      }
+    ],
+    "payment_date": null,
+    "sources": [
+      "https://www.tsholdings.com.tw/tsh/relations/major/1752058440000/",
+      "https://www.tsholdings.com.tw/tsh/issue/issue3/1752563173071/?__locale=zh"
+    ]
+  },
+  "3682": {
+    "last": "2023-12-04",
+    "delisted": "2023-12-15",
+    "cash": 0,
+    "shares": [
+      {
+        "code": "4904",
+        "ratio": 0.0934406
+      }
+    ],
+    "payment_date": null,
+    "sources": [
+      "https://www.cna.com.tw/news/afe/202311170286.aspx",
+      "https://www.cna.com.tw/news/afe/202312130263.aspx"
+    ]
+  },
+  "5264": {
+    "last": "2021-01-06",
+    "delisted": "2021-01-15",
+    "cash": 87.5,
+    "shares": [],
+    "payment_date": "2021-01-22",
+    "payment_date_status": "announced expected, actual receipt unverified",
+    "sources": [
+      "https://news.cnyes.com/news/id/4562794"
+    ]
+  }
+}
