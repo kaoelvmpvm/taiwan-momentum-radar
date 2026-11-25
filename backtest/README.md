@@ -35,3 +35,7 @@ manifest.json: data_kind（research 或 synthetic）, price_source, calendar_sou
 需要完整歷史錨點名單、歷年定期及非定期調整、實際生效日、下市公司行情與公司行動資料。公告存在不代表已收集完整。正式回測前不輸出真實市場績效。
 
 [返回排行榜](../dashboard/README.md)
+
+## 2026-11-25 實證檢驗結論
+
+[完整研究結果及反證檢查](RESEARCH_RESULT.md)。四檔股票池的穩健性檢驗已完成；150檔正式回測仍受歷史資料完整性限制，不啟用實盤策略。
