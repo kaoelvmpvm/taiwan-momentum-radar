@@ -43,10 +43,7 @@ def preview_snapshot(snapshot, state, cal, now, turnover_fetch=live.collect_turn
     _, chosen=live.rank_i2(rows,prior)
     for row in rows:
         if row['t20'] is not None:row['t20']=round(row['t20'],4)
-    snapshot['preview'].update(i2=chosen,i2_available=True,i2_cash_pct=50-5*len(chosen),
-                               turnover_asof=days[-1],i2_provisional=True)
-    snapshot['turnover_asof']=days[-1]
-    snapshot['turnover_coverage']=count
+    snapshot['preview'].update(i2=chosen,i2_available=True,i2_cash_pct=50-5*len(chosen))
     snapshot['message']=f'【暫時預覽】動能日期 {asof}；20日換手率截至 {days[-1]}（{count}/150檔）。I2為混合日期示範，非當日正式結果；今日資料備妥後自動替換。'
     snapshot['last_attempt']=now.isoformat(timespec='seconds')
     # Keep status partial_turnover and unchanged formal/current_core/signal_history.

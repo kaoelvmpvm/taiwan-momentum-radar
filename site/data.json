@@ -51,9 +51,7 @@
     "i2_cash_pct": 0,
     "i2_available": true,
     "prior_month": "2026-10-30",
-    "prior_provenance": "historical_reconstruction",
-    "turnover_asof": "2026-11-25",
-    "i2_provisional": true
+    "prior_provenance": "historical_reconstruction"
   },
   "formal": null,
   "signal_history": [],
@@ -2191,7 +2189,5 @@
     "元大0050及0051持股代理池（非官方歷史成分名單）",
     "Yahoo Finance 含息還原價格衍生指標",
     "TWSE 日期查核成交股數及發行股數"
-  ],
-  "turnover_asof": "2026-11-25",
-  "turnover_coverage": 150
+  ]
 }

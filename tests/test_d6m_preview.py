@@ -16,8 +16,9 @@ class PreviewTest(unittest.TestCase):
             return {code:i+1 for i,code in enumerate(codes)}
         result=preview_snapshot(self.snapshot,self.state,self.cal,self.now,fetch)
         self.assertEqual(result['status'],'partial_turnover')
-        self.assertEqual(result['turnover_asof'],'2026-11-25')
-        self.assertTrue(result['preview']['i2_provisional'])
+        self.assertIn('2026-11-25',result['message'])
+        self.assertTrue(result['preview']['i2_available'])
+        self.assertIn('非當日正式結果',result['message'])
         self.assertEqual(len(result['preview']['i2']),10)
         self.assertEqual(result['formal'],original['formal'])
         self.assertEqual(result['signal_history'],original['signal_history'])
