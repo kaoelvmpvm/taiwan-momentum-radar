@@ -1,0 +1,106 @@
+name: D6-M + I2 daily research
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 10 * * 1-5'
+    - cron: '15 13 * * 1-5'
+  push:
+    paths:
+      - '.github/workflows/d6m.yml'
+      - 'd6m_live.py'
+      - 'site/index.html'
+      - 'tests/test_d6m_live.py'
+      - 'paper_calendar.json'
+permissions:
+  contents: read
+concurrency:
+  group: d6m-daily
+  cancel-in-progress: false
+jobs:
+  update:
+    name: Update research snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Test strategy rules
+        run: python -m unittest discover -s tests -v
+      - name: Restore dated turnover cache
+        uses: actions/cache@v4
+        with:
+          path: .d6m-raw
+          key: d6m-turnover-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            d6m-turnover-v1-
+      - name: Fetch and evaluate signals
+        id: evaluate
+        continue-on-error: true
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          if [ "$SCHEDULE" = '15 13 * * 1-5' ] && python -c "import d6m_live as d; from datetime import datetime; a=d.read(d.DATA); assert a['status']=='complete' and a['asof']==d.expected_session(datetime.now(d.radar.TZ),d.calendar())"; then
+            echo 'Already validated for latest session; retry not needed'
+          else
+            python d6m_live.py
+          fi
+      - name: Commit verified data or stale status
+        if: always() && !cancelled() && (steps.evaluate.outcome == 'success' || steps.evaluate.outcome == 'failure')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add d6m_state.json site/data.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update D6-M research snapshot [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          d=json.load(open('site/data.json'))
+          print('## D6-M + I2')
+          print(f"- 行情日期：{d['asof']}")
+          print(f"- 狀態：{d['status']}，{d['coverage']}/150 檔")
+          print(f"- 模型核心：{d['current_core']}")
+          print(f"- {d['message']}")
+          if d['preview']:
+              print('- 每日預覽候選：'+', '.join(d['preview']['i2']))
+          if d['formal']:
+              print('- 最新正式訊號：'+d['formal']['signal_date'])
+          PY
+      - name: Mark data issue
+        if: steps.evaluate.outcome == 'failure'
+        run: echo "::warning::行情未通過稽核；本次不發出新訊號，保留舊資料。"
+      - name: Upload site bundle
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Prune old turnover cache
+        if: always()
+        run: find .d6m-raw -type f -mtime +45 -delete 2>/dev/null || true
+  deploy:
+    name: Publish mobile dashboard
+    needs: update
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v4
+        id: deployment
