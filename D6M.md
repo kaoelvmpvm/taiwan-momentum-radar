@@ -21,5 +21,8 @@
 
 ## 公開展示及同步
 手機優先公開頁：https://taiwan-d6m-radar.kaoelvmpvm.chatgpt.site/
-研究 repo 維持私有；每次更新後，獨立 sync_public 工作只輸出 site/data.json 至公開展示站，以 GitHub Actions 短效 OIDC 身分驗證指定 repo ID、main 分支及固定工作流程。傳送後匿名讀回並與 repo 原始 JSON 比對。沒有長期 GitHub PAT，也不需公開 repo。若同步失敗，公開頁保留上一版，Actions 顯示錯誤並可重跑；禁止自動補值。 
-GitHub Pages 仍可備援使用，但目前未啟用；若日後帳號支援，在 Settings → Pages → Source → GitHub Actions，新增 Actions repository variable PAGES_ENABLED=true 後重跑。預設不執行 Pages 部署，避免日常資料已成功卻顯示部署失敗。 
+私有研究 repo 不變。公開展示站已發布2026-11-26經查核的150檔動能快照；換手率待更新。GitHub Actions 每次把最新衍生資料寫入 site/data.json。
+- 獨立公開頁已驗證可開啟、個股列表及搜尋正常。
+- GitHub直接同步設計以短效OIDC驗證並讀回校驗，但2026-11-26實測GitHub執行環境對公開站的GET /data.json與POST /d6m-sync均回HTTP 403。為避免反覆失敗，直接同步預設停用；日後確認網路可達且授權正常才設定DIRECT_SITE_SYNC_ENABLED=true。研究資料更新排程不受影響。
+- 站內已建置擁有者授權的 publish_snapshot 與 read_snapshot_status 工具，可將指定 repo main:site/data.json 精確同步並驗證回讀。須先確認工具連線可呼叫，再建立長期同步排程；不可聲稱網站已自動更新。
+- GitHub Pages 為備援，若帳號支援，Settings → Pages → Source → GitHub Actions，新增 Actions repository variable PAGES_ENABLED=true 後重跑。預設不部署。
