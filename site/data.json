@@ -2,8 +2,8 @@
   "version": "D6-M v1.0",
   "asof": "2026-11-26",
   "generated": "2026-11-26T20:46:16+08:00",
-  "status": "partial_turnover",
-  "message": "【暫時預覽】動能日期 2026-11-26；20日換手率截至 2026-11-25（150/150檔）。I2為混合日期示範，非當日正式結果；今日資料備妥後自動替換。",
+  "status": "stale",
+  "message": "本次資料未通過稽核，保留前次快照，不產生新訊號。",
   "coverage": 150,
   "expected": 150,
   "current_core": "2881",
@@ -2183,7 +2183,7 @@
       "rank_delta": null
     }
   ],
-  "last_attempt": "2026-11-26T21:20:29+08:00",
+  "last_attempt": "2026-11-27T06:41:06+08:00",
   "is_month_end": false,
   "sources": [
     "元大0050及0051持股代理池（非官方歷史成分名單）",
