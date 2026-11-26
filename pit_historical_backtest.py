@@ -18,14 +18,84 @@ START=pd.Timestamp("2020-07-01");END=pd.Timestamp("2026-11-25")
 INITIAL=100000.
 KEYS=("S0","M2","M3","M8","Q2")
 BENCH="0050"
+def extend_final_session(op,cl,raw):
+    # Input archive ends 2026-11-24. Append only independently observed official quotes.
+    # No mutation of the archived source, no assumption of a new trade.
+    prior=pd.Timestamp("2026-11-24")
+    if cl.index[-1]!=prior or prior not in raw.index or prior not in op.index:
+        raise ValueError("unexpected input boundary; not permitted to shorten or interpolate")
+    q0,h0=quote(str(prior.date()));q1,h1=quote(str(END.date()))
+    # Ex-rights and reduction tables archived through target date; identify events explicitly.
+    excluded={}
+    for filename in (ROOT/"pit-reconcile-input"/"raw"/"ex_2026.json",ROOT/"pit-special-input"/"raw"/"reduction_2026_reducation_range.json"):
+        if not filename.exists():
+            # Locate the official reduction response by its validated title (not filename).
+            if "reduction" in filename.name:
+                matches=[]
+                for f in (ROOT/"pit-special-input"/"raw").glob("*2026*.json"):
+                    try:
+                        x=json.loads(f.read_text())
+                        if "股票減資恢復買賣參考價格" in str(x.get("title","")) and "115年11月25日" in str(x.get("title","")):matches.append(f)
+                    except Exception:continue
+                if len(matches)!=1:raise ValueError("cannot verify target day reduction source")
+                filename=matches[0]
+            else:raise ValueError("missing target day ex-right source")
+        x=json.loads(filename.read_text())
+        if x.get("stat")!="OK" or "115年11月25日" not in str(x.get("title","")):raise ValueError("action source not current through target")
+        for row in x["data"]:
+            f=dict(zip(x["fields"],row))
+            ds=str(f.get("資料日期",f.get("恢復買賣日期","")))
+            if ds in ("115年11月25日","115/11/25","2026/11/25","2026-11-25"):
+                excluded[str(f.get("股票代號",f.get("證券代號","")))]="target_day_corporate_action_requires_separate_adjustment"
+    # Daily price change must reconcile with prior raw close as an additional no-action guard.
+    x=json.loads(gzip.decompress((OUT/"official_execution"/f"{END.date()}.json.gz").read_bytes()))
+    t=next(t for t in x["tables"] if {"證券代號","收盤價","成交股數","漲跌價差"}.issubset(t.get("fields",[])))
+    fields=t["fields"];ci=fields.index("證券代號");di=fields.index("漲跌價差");si=fields.index("漲跌(+/-)") if "漲跌(+/-)" in fields else None
+    changes={}
+    import re
+    for row in t["data"]:
+        try:
+            v=float(str(row[di]).replace(",",""))
+            sign=re.sub("<[^>]*>","",str(row[si])).strip() if si is not None else ""
+            if sign=="-":v=-abs(v)
+            elif sign=="+":v=abs(v)
+            elif sign not in ("","X"," "):continue
+            if sign=="X":continue
+            changes[str(row[ci]).strip()]=v
+        except (ValueError,TypeError):continue
+    a={};z={};r={};issues={}
+    for c in cl.columns:
+        if c not in q1:
+            issues[c]="no_target_day_official_trade";continue
+        if c in excluded:
+            issues[c]=excluded[c];continue
+        if c not in q0 or pd.isna(raw.at[prior,c]) or pd.isna(cl.at[prior,c]):
+            issues[c]="missing_prior_day_anchor";continue
+        o0,c0,v0=q0[c];o1,c1,v1=q1[c]
+        if abs(float(raw.at[prior,c])-c0)>max(.011,c0*.0005):
+            issues[c]="prior_raw_price_basis_mismatch";continue
+        if c not in changes or abs(c1-c0-changes[c])>max(.011,c0*.0005):
+            issues[c]="official_change_not_consistent_with_previous_close";continue
+        scale=float(cl.at[prior,c])/c0
+        a[c]=o1*scale;z[c]=c1*scale;r[c]=c1
+    report={"source":"TWSE MI_INDEX, dated official quotes plus ex-right and reduction guards","prior":str(prior.date()),"target":str(END.date()),"sha256":[h0,h1],"appended_codes":sorted(z),"unavailable_codes":issues}
+    (OUT/"boundary_repair.json").write_text(json.dumps(report,ensure_ascii=False,indent=2))
+    print("PIT_BOUNDARY_REPAIR",json.dumps({"appended":len(z),"unavailable":issues,"benchmark":{k:v for k,v in report.items() if k in ("prior","target")},"benchmark_close":z.get(BENCH)},ensure_ascii=False),flush=True)
+    if BENCH not in z:raise ValueError("benchmark final-day repair failed")
+    for f,values in [(op,a),(cl,z),(raw,r)]:
+        f.loc[END]=pd.Series(values,dtype=float).reindex(f.columns)
+    return op,cl,raw
+
 def load_prices():
     def load(n):
         f=pd.read_csv(P/n,index_col=0,parse_dates=True)
         if f.index.has_duplicates or not f.index.is_monotonic_increasing:raise ValueError("invalid price index")
         return f
     op=load("adjusted_open.csv.gz");cl=load("adjusted_close.csv.gz");raw=load("raw_close.csv.gz")
+    if END not in cl.index:
+        op,cl,raw=extend_final_session(op,cl,raw)
     dates=pd.DatetimeIndex(cl[BENCH].dropna().index)
-    if START not in dates or END not in dates:raise ValueError("missing benchmark boundary")
+    if START not in dates or END not in dates:raise ValueError(f"missing benchmark boundary: {dates.min()} to {dates.max()}")
     cl=cl.reindex(dates);op=op.reindex(index=dates,columns=cl.columns);raw=raw.reindex(index=dates,columns=cl.columns)
     if (cl<=0).any().any() or (op<=0).any().any():raise ValueError("nonpositive observed price")
     return dates,op,cl,raw

@@ -30,6 +30,18 @@ jobs:
           run-id: '45720708521'
           github-token: ${{ github.token }}
           path: pit-timing-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-reconcile-audit
+          run-id: '45717164913'
+          github-token: ${{ github.token }}
+          path: pit-reconcile-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-special-audit
+          run-id: '45726492044'
+          github-token: ${{ github.token }}
+          path: pit-special-input
       - run: pip install -r requirements.txt beautifulsoup4
       - run: python -m unittest pit_historical_tests -v
       - run: python -u pit_historical_backtest.py
