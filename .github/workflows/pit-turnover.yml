@@ -1,0 +1,98 @@
+name: PIT T1 actual daily turnover experiment
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pit_turnover_experiment.py'
+      - '.github/workflows/pit-turnover.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  collect:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-price-audit
+          run-id: '45724949827'
+          github-token: ${{ github.token }}
+          path: pit-price-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-timing-audit
+          run-id: '45720708521'
+          github-token: ${{ github.token }}
+          path: pit-timing-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-provisional-backtest
+          run-id: '45727730233'
+          github-token: ${{ github.token }}
+          path: pit-prior-backtest
+      - run: pip install -r requirements.txt beautifulsoup4
+      - run: python -u pit_turnover_experiment.py collect ${{ matrix.year }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-turnover-${{ matrix.year }}
+          path: pit-turnover-output/${{ matrix.year }}/
+          retention-days: 30
+  backtest:
+    needs: collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-price-audit
+          run-id: '45724949827'
+          github-token: ${{ github.token }}
+          path: pit-price-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-reconcile-audit
+          run-id: '45717164913'
+          github-token: ${{ github.token }}
+          path: pit-reconcile-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-special-audit
+          run-id: '45726492044'
+          github-token: ${{ github.token }}
+          path: pit-special-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-provisional-backtest
+          run-id: '45727730233'
+          github-token: ${{ github.token }}
+          path: pit-prior-backtest
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pit-turnover-20*
+          path: pit-turnover-artifacts
+      - run: |
+          mkdir -p pit-turnover-input
+          for y in {2020..2026}; do mv pit-turnover-artifacts/pit-turnover-$y pit-turnover-input/$y; done
+      - run: pip install -r requirements.txt beautifulsoup4
+      - run: python -u pit_turnover_experiment.py aggregate
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-turnover-results
+          path: pit-turnover-output/
+          retention-days: 30
