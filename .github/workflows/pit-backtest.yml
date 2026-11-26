@@ -1,0 +1,41 @@
+name: PIT provisional historical backtest and execution audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pit_historical_backtest.py'
+      - 'pit_historical_tests.py'
+      - '.github/workflows/pit-backtest.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-price-audit
+          run-id: '45724949827'
+          github-token: ${{ github.token }}
+          path: pit-price-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-timing-audit
+          run-id: '45720708521'
+          github-token: ${{ github.token }}
+          path: pit-timing-input
+      - run: pip install -r requirements.txt beautifulsoup4
+      - run: python -m unittest pit_historical_tests -v
+      - run: python -u pit_historical_backtest.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-provisional-backtest
+          path: pit-backtest-output/
+          retention-days: 30
