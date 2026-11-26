@@ -1,9 +1,9 @@
 {
   "version": "D6-M v1.0",
   "asof": "2026-11-26",
-  "generated": "2026-11-26T20:30:01+08:00",
+  "generated": "2026-11-26T20:46:16+08:00",
   "status": "partial_turnover",
-  "message": "動能已查核；換手率待更新，I2預覽暫停",
+  "message": "動能已查核；待證交所當日換手率資料，I2預覽暫停（晚間及次晨自動補算）",
   "coverage": 150,
   "expected": 150,
   "current_core": "2881",
@@ -2146,7 +2146,7 @@
       "rank_delta": null
     }
   ],
-  "last_attempt": "2026-11-26T20:30:01+08:00",
+  "last_attempt": "2026-11-26T20:46:16+08:00",
   "is_month_end": false,
   "sources": [
     "元大0050及0051持股代理池（非官方歷史成分名單）",
