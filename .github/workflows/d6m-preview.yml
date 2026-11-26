@@ -23,6 +23,13 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
+      - name: Restore verified dated turnover reports
+        uses: actions/cache/restore@v4
+        with:
+          path: .d6m-raw
+          key: d6m-turnover-v2-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            d6m-turnover-v2-
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Test preview safeguards
@@ -39,3 +46,12 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
+      - name: Ensure report cache directory
+        if: always() && !cancelled()
+        run: mkdir -p .d6m-raw
+      - name: Save verified dated turnover reports for next run
+        if: always() && !cancelled()
+        uses: actions/cache/save@v4
+        with:
+          path: .d6m-raw
+          key: d6m-turnover-v2-${{ github.run_id }}-${{ github.run_attempt }}

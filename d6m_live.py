@@ -69,7 +69,7 @@ def report_dates(value):
 def date_and_fields(x,day,field):
     dates=report_dates(x.get('date'))|report_dates(x.get('title'))
     if x.get('stat')!='OK' or dates!={day}:
-        raise ValueError(f'日期不符或未發布 {day}（報表日期：{",".join(sorted(dates)) or "未提供"}；狀態：{"OK" if x.get("stat")=="OK" else "非OK"}）')
+        raise ValueError(f'日期不符或未發布 {day}（報表日期：{",".join(sorted(dates)) or "未提供"}；證交所狀態：{str(x.get("stat","未提供"))[:120]}）')
     fields={'證券代號',field};ts=[t for t in x.get('tables',[]) if fields<=set(t.get('fields',[]))]
     if fields<=set(x.get('fields',[])):ts.append(x)
     if len(ts)!=1:raise ValueError('資料欄位不符')
@@ -103,38 +103,67 @@ def parse_report_csv(content,day,field):
     report={'stat':'OK','title':title,'fields':rows[i],'data':data}
     date_and_fields(report,day,field)
     return report
+def response_detail(response):
+    """Keep a short diagnostic of rejected public responses, not secrets or whole reports."""
+    if response is None:return '未收到HTTP回應'
+    status=getattr(response,'status_code','unknown')
+    ct=getattr(response,'headers',{}).get('Content-Type','unknown')
+    raw=getattr(response,'content',b'')
+    if not isinstance(raw,bytes):return f'HTTP {status}；Content-Type {ct}'
+    prefix=' '.join(raw[:240].decode('utf-8-sig',errors='replace').split())[:150]
+    return f'HTTP {status}；Content-Type {ct}；{len(raw)} bytes；前段：{prefix}'
+
 def daily_table(day,kind):
     field='成交股數' if kind=='volume' else '發行股數'
     p=CACHE/f'{day}_{kind}.json'
     if p.exists():
         try:return date_and_fields(read(p),day,field)
-        except Exception:p.unlink()
+        except Exception as exc:
+            print(f'{day} {kind}: 快取稽核失敗，重新下載：{str(exc)[:160]}',flush=True)
+            p.unlink()
     url='https://www.twse.com.tw/rwd/zh/'+('afterTrading/MI_INDEX' if kind=='volume' else 'fund/MI_QFIIS')
+    # Identical report and date in both formats; never substitute a different session.
     params={'date':day.replace('-',''),('type' if kind=='volume' else 'selectType'):'ALLBUT0999'}
-    for i in range(2):
-        errors=[]
+    errors=[]
+    for i in range(3):
         for fmt in ('json','csv'):
+            response=None
             try:
-                response=requests.get(url,params={**params,'response':fmt},headers={'User-Agent':'Mozilla/5.0'},timeout=35)
+                response=requests.get(url,params={**params,'response':fmt},headers={'User-Agent':'Mozilla/5.0'},timeout=25)
                 response.raise_for_status()
                 x=response.json() if fmt=='json' else parse_report_csv(response.content,day,field)
                 out=date_and_fields(x,day,field)
                 CACHE.mkdir(exist_ok=True)
                 write(p,x)
-                if fmt=='csv':print(f'{day} {kind}: 官方 CSV 備援稽核通過',flush=True)
+                print(f'{day} {kind}: 官方 {fmt.upper()} 稽核通過，{len(out)} 筆',flush=True)
                 time.sleep(1.3);return out
             except Exception as exc:
-                errors.append(f'{fmt}: {str(exc)[:200] if isinstance(exc,ValueError) else type(exc).__name__}')
-        time.sleep(2*(i+1))
-    raise ValueError(f'{day} {kind}: {"；".join(errors)}')
+                error=f'{fmt}: {type(exc).__name__}: {str(exc)[:180]}；{response_detail(response)}'
+                errors.append(error)
+                print(f'{day} {kind} attempt {i+1}: {error}',flush=True)
+        if i<2:time.sleep(3*(i+1))
+    raise ValueError(f'{day} {kind}: {"；".join(errors[-2:])}')
+
 def collect_turnover(days,codes):
-    if len(days)!=20:raise ValueError('20個交易日不足')
-    totals={c:0. for c in codes};missing=set()
+    if len(days)!=20 or len(set(days))!=20:raise ValueError('20個不同交易日不足')
+    totals={c:0. for c in codes};missing=set();errors=[];verified=0
+    deadline=time.monotonic()+8*60
+    # A missing latest report must not prevent all older dated reports from being saved.
     for day in reversed(days):
-        v=daily_table(day,'volume');s=daily_table(day,'shares')
+        if time.monotonic()>=deadline:
+            errors.append('下載時間上限；已驗證報表保留供下次重試')
+            break
+        values={}
+        for kind in ('volume','shares'):
+            try:values[kind]=daily_table(day,kind)
+            except Exception as exc:errors.append(f'{day} {kind}: {str(exc)[:240]}')
+        if len(values)!=2:continue
+        v,s=values['volume'],values['shares'];verified+=1
         for c in codes:
             if c not in v or s.get(c,0)<=0:missing.add(c)
             else:totals[c]+=100*v[c]/s[c]
+    print(f'換手率整日報表稽核：{verified}/20；缺漏報表 {len(errors)} 份',flush=True)
+    if errors:raise ValueError(f'{verified}/20 日完整；缺漏 {len(errors)} 份：'+'；'.join(errors[:4]))
     return {c:None if c in missing else totals[c] for c in codes}
 def fetch_observation(now,cal):
     radar.OUT.mkdir(exist_ok=True);CACHE.mkdir(exist_ok=True)
@@ -218,6 +247,9 @@ def main():
     now=datetime.now(radar.TZ);state=read(STATE);old=read(DATA)
     try:
         cal=calendar();asof,rows,r12,r6,turnover_complete=fetch_observation(now,cal)
+        # Completion, not start time, controls the before-open formal-signal cutoff.
+        now=datetime.now(radar.TZ)
+        if asof!=expected_session(now,cal):raise ValueError('擷取期間已跨行情日，拒絕發布過期快照')
         state,preview,reason,is_end=evaluate(state,asof,rows,r12,r6,now,cal,turnover_complete)
         past={r['code']:r for r in old.get('rows',[])}
         for r in rows:

@@ -93,10 +93,20 @@ class TestOfficialTurnover(unittest.TestCase):
             self.assertEqual(get.call_count,2)
     def test_latest_day_missing_prevents_turnover_calculation(self):
         days=[str(i) for i in range(20)]
-        with patch.object(live,'daily_table',side_effect=[{'2330':100},ValueError('unpublished')]) as get:
-            with self.assertRaises(ValueError):live.collect_turnover(days,['2330'])
-            self.assertEqual(get.call_count,2)
+        def report(day,kind):
+            if day=='19' and kind=='shares':raise ValueError('unpublished')
+            return {'2330':100}
+        with patch.object(live,'daily_table',side_effect=report) as get:
+            with self.assertRaisesRegex(ValueError,'19/20'):live.collect_turnover(days,['2330'])
+            self.assertEqual(get.call_count,40)
             self.assertEqual(get.call_args_list[1].args,('19','shares'))
+            self.assertEqual(get.call_args_list[-1].args,('0','shares'))
+    def test_duplicate_sessions_rejected(self):
+        with self.assertRaises(ValueError):live.collect_turnover(['2026-11-26']*20,['2330'])
+    def test_public_response_diagnostic(self):
+        r=Mock(status_code=200,headers={'Content-Type':'application/json'},content=b'{"stat":"not published"}')
+        self.assertIn('not published',live.response_detail(r))
+        self.assertIn('HTTP 200',live.response_detail(r))
     def test_no_cross_date_turnover_fill(self):
         days=[str(i) for i in range(20)]
         def report(day,kind):
