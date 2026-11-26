@@ -1,0 +1,121 @@
+{
+  "status": "PROVISIONAL_HISTORICAL_BACKTEST_NOT_CERTIFIED",
+  "runs": {
+    "backtest": 45727730233,
+    "price": 45724949827,
+    "market": 45726939590,
+    "timing": 45720708521
+  },
+  "period": [
+    "2020-07-01",
+    "2026-11-25"
+  ],
+  "initial": 100000,
+  "full": {
+    "S0": {
+      "terminal": 478126.84050575306,
+      "cagr": 0.2769040592036782,
+      "mdd": -0.33827635805607825,
+      "sharpe": 1.195251740816656
+    },
+    "M2": {
+      "terminal": 523147.84397941676,
+      "cagr": 0.294981466767158,
+      "mdd": -0.6618525198828029,
+      "sharpe": 0.8147978018703188
+    },
+    "M3": {
+      "terminal": 601690.9885569563,
+      "cagr": 0.32359091017462727,
+      "mdd": -0.5393919095291851,
+      "sharpe": 0.9332095551525205
+    },
+    "M8": {
+      "terminal": 480946.55194395274,
+      "cagr": 0.27807754712065513,
+      "mdd": -0.5499045991061773,
+      "sharpe": 0.89833329879555
+    },
+    "Q2": {
+      "terminal": 446292.9231022062,
+      "cagr": 0.2632336193279141,
+      "mdd": -0.5007002438822451,
+      "sharpe": 0.8755834385521057
+    }
+  },
+  "fixed_terminal": {
+    "S0": 478126.84050575306,
+    "M2": 3310519.392667071,
+    "M3": 2434591.2692718087,
+    "M8": 1879750.235316295,
+    "Q2": 1391950.4364393794
+  },
+  "pre2026_cagr_percent": {
+    "S0": 24.95,
+    "M2": 38.71,
+    "M3": 37.36,
+    "M8": 32.56,
+    "Q2": 23.31
+  },
+  "double_cost_cagr_percent": {
+    "S0": 27.65,
+    "M2": 26.08,
+    "M3": 29.17,
+    "M8": 24.79,
+    "Q2": 20.24
+  },
+  "rolling36_wins": {
+    "S0": 0,
+    "M2": 24,
+    "M3": 21,
+    "M8": 16,
+    "Q2": 20,
+    "windows": 41,
+    "last_month_partial": true
+  },
+  "reference_rank_sensitivity": {
+    "method": "Replace scores with official-reference growth where available; retain original 83 scores without official endpoint. Preserve price matrices, eligibility and trading rules. Diagnostic, not certified total return.",
+    "M2": {
+      "terminal": 523147.84397941676,
+      "cagr": 0.294981466767158,
+      "changed_months": []
+    },
+    "M3": {
+      "terminal": 602202.4222271828,
+      "cagr": 0.3237666016536369,
+      "mdd": -0.5393919095291857,
+      "sharpe": 0.9329569384644629,
+      "changed_months": [
+        {
+          "signal": "2022-06-30",
+          "removed": "1605",
+          "added": "5880"
+        },
+        {
+          "signal": "2025-03-31",
+          "removed": "2540",
+          "added": "2603"
+        }
+      ]
+    },
+    "base_reproduction_tolerance_ntd": 0.01
+  },
+  "historical_execution": {
+    "S0": 1,
+    "M2": 498,
+    "M3": 972,
+    "M8": 806,
+    "Q2": 1223,
+    "all_missing_official": 0,
+    "all_open_close_ratio_mismatches": 0,
+    "all_over_1_percent_daily_volume_proxy": 0,
+    "ratio_tolerance": 0.001,
+    "warning": "Model fills are not proof of actual auction execution; per-path order notional divided by official opening price times total daily volume is only a liquidity proxy. 36 missing TWSE trade pairs occurred only in fixed-pool paths."
+  },
+  "limitations": [
+    "PIT universe remains a reverse-built proxy, five quarter disclosure differences and incomplete event archive.",
+    "Vendor/reference total-return conventions mixed, incomplete OTC corporate actions and 83 candidate scores without official endpoints.",
+    "Fractional adjusted units, assumed opening fills, no auction depth, taxes/fees not actual broker quote, no lot rules.",
+    "Sensitivity tests not out-of-sample; no new strategy or live trading authorization."
+  ]
+}
