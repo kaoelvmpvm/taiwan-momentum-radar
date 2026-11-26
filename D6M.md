@@ -10,7 +10,7 @@
 - 不因這次上線改動先前回測，沒有重新挑選參數。歷史回測不保證未來優於買入持有。
 
 ## 更新
-每日星期一至五 18:15 台北時間（UTC 10:15），21:15 失敗重試（當日成功則不重算），下一交易日前 07:15 再試（週一至五），GitHub Actions 實際啟動可能延遲。休市日用最近已驗證交易日，正式信號只在上述時段產出。月末若資料晚到須於下一交易日開盤前手動重跑，否則跳過。交易日曆目前至2027-12-31，須維護。
+每日星期一至五 22:15 台北時間（UTC 14:15），23:15 失敗重試（當日成功則不重算），下一交易日前 07:15 再試（週一至五），GitHub Actions 實際啟動可能延遲。休市日用最近已驗證交易日，正式信號只在上述時段產出。月末若資料晚到須於下一交易日開盤前手動重跑，否則跳過。交易日曆目前至2027-12-31，須維護。
 - Actions → D6-M + I2 daily research → Run workflow 可手動更新。
 - `d6m_state.json`：模型核心、各月末前30%快照、正式信號歷史。
 - `site/data.json`：最新公開衍生資料；包含日期、稽核狀態、核心、當日預覽、最新正式信號、150檔。
@@ -21,8 +21,8 @@
 
 ## 公開展示及同步
 手機優先公開頁：https://taiwan-d6m-radar.kaoelvmpvm.chatgpt.site/
-私有研究 repo 不變。公開展示站已發布2026-11-26經查核的150檔動能快照；換手率待更新。GitHub Actions 每次把最新衍生資料寫入 site/data.json。
+研究 repo 已公開。GitHub Actions 每次把最新衍生資料寫入 site/data.json。TWSE 當日發行股數未通過稽核時，先嘗試同報表 CSV 格式；兩者仍不合格時停止 I2，禁止以其他日期或估計值補齊。每日先驗證最新一日，再驗證其餘19日。
 - 獨立公開頁已驗證可開啟、個股列表及搜尋正常。
 - GitHub直接同步設計以短效OIDC驗證並讀回校驗，但2026-11-26實測GitHub執行環境對公開站的GET /data.json與POST /d6m-sync均回HTTP 403。為避免反覆失敗，直接同步預設停用；日後確認網路可達且授權正常才設定DIRECT_SITE_SYNC_ENABLED=true。研究資料更新排程不受影響。
-- 站內已建置擁有者授權的 publish_snapshot 與 read_snapshot_status 工具，可將指定 repo main:site/data.json 精確同步並驗證回讀。須先確認工具連線可呼叫，再建立長期同步排程；不可聲稱網站已自動更新。
-- GitHub Pages 為備援，若帳號支援，Settings → Pages → Source → GitHub Actions，新增 Actions repository variable PAGES_ENABLED=true 後重跑。預設不部署。
+- 站內已建置擁有者授權的 publish_snapshot 與 read_snapshot_status 工具，可將指定 repo main:site/data.json 精確同步並驗證回讀。2026-11-26 已實際完成寫入及讀回驗證，並啟用站點定期同步（工作日 22:45、23:45、07:45）。
+- GitHub Pages 公開備援：https://kaoelvmpvm.github.io/taiwan-momentum-radar/site/ 。網頁直接讀取 main 最新 site/data.json，避免 Actions 提交未觸發 Pages 重建造成過期；若讀取失敗，回退至 Pages 靜態快照。

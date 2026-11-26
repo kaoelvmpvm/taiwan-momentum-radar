@@ -2,8 +2,8 @@ name: D6-M + I2 daily research
 on:
   workflow_dispatch:
   schedule:
-    - cron: '15 10 * * 1-5'
-    - cron: '15 13 * * 1-5'
+    - cron: '15 14 * * 1-5'
+    - cron: '15 15 * * 1-5'
     - cron: '15 23 * * 0-4'
   push:
     paths:
@@ -40,20 +40,13 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Test strategy rules
         run: python -m unittest discover -s tests -v
-      - name: Restore dated turnover cache
-        uses: actions/cache@v4
-        with:
-          path: .d6m-raw
-          key: d6m-turnover-v1-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            d6m-turnover-v1-
       - name: Fetch and evaluate signals
         id: evaluate
         continue-on-error: true
         env:
           SCHEDULE: ${{ github.event.schedule }}
         run: |
-          if { [ "$SCHEDULE" = '15 13 * * 1-5' ] || [ "$SCHEDULE" = '15 23 * * 0-4' ]; } && python -c "import d6m_live as d; from datetime import datetime; a=d.read(d.DATA); assert a['status']=='complete' and a['asof']==d.expected_session(datetime.now(d.radar.TZ),d.calendar())"; then
+          if { [ "$SCHEDULE" = '15 15 * * 1-5' ] || [ "$SCHEDULE" = '15 23 * * 0-4' ]; } && python -c "import d6m_live as d; from datetime import datetime; a=d.read(d.DATA); assert a['status']=='complete' and a['asof']==d.expected_session(datetime.now(d.radar.TZ),d.calendar())"; then
             echo 'Already validated for latest session; retry not needed'
           else
             python d6m_live.py

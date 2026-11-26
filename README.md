@@ -1,4 +1,4 @@
-> **目前主力前瞻研究：D6-M + I2 v1.0。** [手機公開觀察頁](https://taiwan-d6m-radar.kaoelvmpvm.chatgpt.site/) · [固定策略、更新與公開頁部署](D6M.md)。舊研究雷達與歷史回測保留，舊工作流程改為手動啟動。
+> **目前主力前瞻研究：D6-M + I2 v1.0。** [手機公開觀察頁](https://taiwan-d6m-radar.kaoelvmpvm.chatgpt.site/) · [GitHub Pages 備援](https://kaoelvmpvm.github.io/taiwan-momentum-radar/site/) · [固定策略、更新與公開頁部署](D6M.md)。舊研究雷達與歷史回測保留，舊工作流程改為手動啟動。
 
 # 台股動能雷達 Taiwan Momentum Radar
 

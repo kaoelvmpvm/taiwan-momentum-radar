@@ -1,5 +1,5 @@
 """Frozen D6-M + I2 research signals. No broker, no orders, no personal holdings."""
-import json, math, re, time
+import csv, io, json, math, re, time
 from datetime import datetime, time as dt_time
 from pathlib import Path
 import pandas as pd
@@ -55,10 +55,21 @@ def expected_session(now,c):
     candidates=[d for d in c['sessions'] if d<day or (d==day and now.time()>=dt_time(16,0))]
     if not candidates:raise ValueError('缺少可驗證交易日')
     return candidates[-1]
+def report_dates(value):
+    """Recognise explicit Gregorian/ROC exchange report dates; never infer a day."""
+    dates=set()
+    value=str(value or '')
+    def add(y,m,d):
+        try:dates.add(datetime(int(y)+(1911 if len(y)==3 else 0),int(m),int(d)).date().isoformat())
+        except ValueError:pass
+    for y,m,d in re.findall(r'(?<!\d)(\d{3,4})年\s*(\d{1,2})月\s*(\d{1,2})日',value):add(y,m,d)
+    for y,m,d in re.findall(r'(?<!\d)(\d{3,4})[-/](\d{1,2})[-/](\d{1,2})(?!\d)',value):add(y,m,d)
+    for y,m,d in re.findall(r'(?<!\d)(\d{3,4})(\d{2})(\d{2})(?!\d)',value):add(y,m,d)
+    return dates
 def date_and_fields(x,day,field):
-    stamp=pd.Timestamp(day);roc=stamp.year-1911
-    ok=str(x.get('date','')).replace('-','').replace('/','')==stamp.strftime('%Y%m%d') or re.search(rf'{roc}年0?{stamp.month}月0?{stamp.day}日',str(x.get('title',''))) is not None
-    if x.get('stat')!='OK' or not ok:raise ValueError('日期不符或未發布 '+day)
+    dates=report_dates(x.get('date'))|report_dates(x.get('title'))
+    if x.get('stat')!='OK' or dates!={day}:
+        raise ValueError(f'日期不符或未發布 {day}（報表日期：{",".join(sorted(dates)) or "未提供"}；狀態：{"OK" if x.get("stat")=="OK" else "非OK"}）')
     fields={'證券代號',field};ts=[t for t in x.get('tables',[]) if fields<=set(t.get('fields',[]))]
     if fields<=set(x.get('fields',[])):ts.append(x)
     if len(ts)!=1:raise ValueError('資料欄位不符')
@@ -66,6 +77,7 @@ def date_and_fields(x,day,field):
     for r in t['data']:
         try:
             c=str(r[ci]).strip();v=float(str(r[vi]).replace(',','').strip())
+            if not re.fullmatch(r'[0-9]{4,6}[A-Z0-9]*',c):continue
             if not math.isfinite(v) or v<0:continue
         except (ValueError,TypeError,IndexError):continue
         if c in out:raise ValueError('重複代碼')
@@ -73,6 +85,24 @@ def date_and_fields(x,day,field):
     if len(out)<500 or out.get('2330',0)<=0:raise ValueError('市場資料不完整')
     if field=='發行股數' and not 10e9<out['2330']<40e9:raise ValueError('股數單位異常')
     return out
+def parse_report_csv(content,day,field):
+    """Fallback format for exactly the same official daily report."""
+    try:body=content.decode('utf-8-sig')
+    except UnicodeDecodeError:body=content.decode('cp950')
+    rows=[[v.strip().lstrip('=') .strip('"') for v in r] for r in csv.reader(io.StringIO(body))]
+    headers=[i for i,r in enumerate(rows) if {'證券代號',field}<=set(r)]
+    if len(headers)!=1:raise ValueError('CSV報表欄位不符')
+    i=headers[0]
+    # Reports can contain multiple sections. Match the dated heading of this table.
+    title=next((' '.join(r) for r in reversed(rows[:i]) if report_dates(' '.join(r))), '')
+    data=[]
+    for r in rows[i+1:]:
+        if not r or not any(r):break
+        if len(r)<len(rows[i]):break
+        data.append(r)
+    report={'stat':'OK','title':title,'fields':rows[i],'data':data}
+    date_and_fields(report,day,field)
+    return report
 def daily_table(day,kind):
     field='成交股數' if kind=='volume' else '發行股數'
     p=CACHE/f'{day}_{kind}.json'
@@ -80,17 +110,27 @@ def daily_table(day,kind):
         try:return date_and_fields(read(p),day,field)
         except Exception:p.unlink()
     url='https://www.twse.com.tw/rwd/zh/'+('afterTrading/MI_INDEX' if kind=='volume' else 'fund/MI_QFIIS')
-    params={'date':day.replace('-',''),'response':'json',('type' if kind=='volume' else 'selectType'):'ALLBUT0999'}
-    for i in range(3):
-        try:
-            response=requests.get(url,params=params,headers={'User-Agent':'Mozilla/5.0'},timeout=35);response.raise_for_status()
-            x=response.json();out=date_and_fields(x,day,field);write(p,x);time.sleep(1.3);return out
-        except Exception as exc:err=str(exc);time.sleep(2*(i+1))
-    raise ValueError(f'{day} {kind}: {err}')
+    params={'date':day.replace('-',''),('type' if kind=='volume' else 'selectType'):'ALLBUT0999'}
+    for i in range(2):
+        errors=[]
+        for fmt in ('json','csv'):
+            try:
+                response=requests.get(url,params={**params,'response':fmt},headers={'User-Agent':'Mozilla/5.0'},timeout=35)
+                response.raise_for_status()
+                x=response.json() if fmt=='json' else parse_report_csv(response.content,day,field)
+                out=date_and_fields(x,day,field)
+                CACHE.mkdir(exist_ok=True)
+                write(p,x)
+                if fmt=='csv':print(f'{day} {kind}: 官方 CSV 備援稽核通過',flush=True)
+                time.sleep(1.3);return out
+            except Exception as exc:
+                errors.append(f'{fmt}: {str(exc)[:200] if isinstance(exc,ValueError) else type(exc).__name__}')
+        time.sleep(2*(i+1))
+    raise ValueError(f'{day} {kind}: {"；".join(errors)}')
 def collect_turnover(days,codes):
     if len(days)!=20:raise ValueError('20個交易日不足')
     totals={c:0. for c in codes};missing=set()
-    for day in days:
+    for day in reversed(days):
         v=daily_table(day,'volume');s=daily_table(day,'shares')
         for c in codes:
             if c not in v or s.get(c,0)<=0:missing.add(c)
@@ -161,13 +201,13 @@ def evaluate(state,asof,rows,r12,r6,now,cal,turnover_complete=True):
     nextday=upcoming[0] if upcoming else None
     is_end=nextday is not None and nextday[:7]!=asof[:7]
     existing=next((s for s in state['signals'] if s['signal_date']==asof),None)
-    reason='非月底，僅觀察，不換倉' if turnover_complete else '動能已查核；換手率待更新，I2預覽暫停'
+    reason='非月底，僅觀察，不換倉' if turnover_complete else '動能已查核；待證交所當日換手率資料，I2預覽暫停（晚間及次晨自動補算）'
     if is_end:
         state['month_ends'].setdefault(str(p),{'date':asof,'top30':top,'eligible_count':sum(r['r6'] is not None for r in rows),'provenance':'observed'})
         before_open=now.date().isoformat()<nextday or (now.date().isoformat()==nextday and now.time()<dt_time(9,0))
         if existing:reason='月底訊號已存檔，不覆寫'
         elif prior is None:reason='缺少上月底快照；本月正式訊號暫停'
-        elif not turnover_complete:reason='月底動能已查核；換手率待更新，正式訊號暫停'
+        elif not turnover_complete:reason='月底動能已查核；待證交所當日換手率資料，正式訊號暫停（開盤前自動補算）'
         elif not before_open:reason='開盤前未完成；不回填正式訊號'
         else:
             sig={'signal_date':asof,'next_session':nextday,'generated':now.isoformat(timespec='seconds'),**preview,
