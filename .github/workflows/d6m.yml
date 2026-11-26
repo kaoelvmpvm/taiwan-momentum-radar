@@ -4,12 +4,14 @@ on:
   schedule:
     - cron: '15 10 * * 1-5'
     - cron: '15 13 * * 1-5'
+    - cron: '15 23 * * 0-4'
   push:
     paths:
       - '.github/workflows/d6m.yml'
       - 'd6m_live.py'
       - 'site/index.html'
       - 'tests/test_d6m_live.py'
+      - 'tests/test_d6m_site.py'
       - 'paper_calendar.json'
 permissions:
   contents: read
@@ -50,7 +52,7 @@ jobs:
         env:
           SCHEDULE: ${{ github.event.schedule }}
         run: |
-          if [ "$SCHEDULE" = '15 13 * * 1-5' ] && python -c "import d6m_live as d; from datetime import datetime; a=d.read(d.DATA); assert a['status']=='complete' and a['asof']==d.expected_session(datetime.now(d.radar.TZ),d.calendar())"; then
+          if { [ "$SCHEDULE" = '15 13 * * 1-5' ] || [ "$SCHEDULE" = '15 23 * * 0-4' ]; } && python -c "import d6m_live as d; from datetime import datetime; a=d.read(d.DATA); assert a['status']=='complete' and a['asof']==d.expected_session(datetime.now(d.radar.TZ),d.calendar())"; then
             echo 'Already validated for latest session; retry not needed'
           else
             python d6m_live.py
@@ -81,7 +83,7 @@ jobs:
           PY
       - name: Mark data issue
         if: steps.evaluate.outcome == 'failure'
-        run: echo "::warning::行情未通過稽核；本次不發出新訊號，保留舊資料。"
+        run: echo "::warning::部分或全部行情未通過稽核；不發出新的正式信號。"
       - name: Upload site bundle
         uses: actions/upload-pages-artifact@v3
         with:

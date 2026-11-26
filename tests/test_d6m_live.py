@@ -46,6 +46,13 @@ class TestD6M(unittest.TestCase):
         old=s['signals'][0].copy()
         s,_,_,_=evaluate(s,'2026-11-30',rows(),RPOS,BACK,dt('2026-11-30','20:00'),CAL)
         self.assertEqual(s['signals'],[old])
+    def test_partial_turnover_no_formal_signal(self):
+        r=rows();
+        for row in r:row['t20']=None
+        s,p,reason,_=evaluate(state(),'2026-11-30',r,RNEG,BACK,dt('2026-11-30','18:15'),CAL,False)
+        self.assertEqual(s['model_core'],'2330');self.assertFalse(s['signals']);self.assertIn('2026-11',s['month_ends']);self.assertIsNone(p['i2_cash_pct']);self.assertFalse(p['i2_available'])
+        s,p,_,_=evaluate(s,'2026-11-30',rows(),RNEG,BACK,dt('2026-11-30','21:15'),CAL,True)
+        self.assertEqual(len(s['signals']),1);self.assertTrue(p['i2_available'])
     def test_no_late_signal(self):
         s,_,_,_=evaluate(state(),'2026-11-30',rows(),RNEG,BACK,dt('2026-12-01','09:00'),CAL)
         self.assertFalse(s['signals']);self.assertEqual(s['model_core'],'2330')

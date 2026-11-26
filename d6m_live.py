@@ -142,27 +142,32 @@ def fetch_observation(now,cal):
     if issues or len(corrected)<len(set(pool)|set(CORE)):
         raise ValueError(f'價格稽核未通過 {len(issues)} 檔：'+ '; '.join(issues[:8]))
     days=[str(d.date()) for d in bench.loc[:t].index[-20:]]
-    turnover=collect_turnover(days,pool)
+    turnover_complete=True
+    try:turnover=collect_turnover(days,pool)
+    except Exception as exc:
+        turnover_complete=False;turnover={c:None for c in pool}
+        print(f'換手率來源尚未通過稽核：{exc}',flush=True)
     for r in rows:
         r['t20']=turnover[r['code']]
-        if r['t20'] is None:r['reason']='20日成交股數或發行股數缺漏；不列入I2'
+        if r['t20'] is None:r['reason']='20日換手率來源待更新' if not turnover_complete else '20日成交股數或發行股數缺漏；不列入I2'
     r12core={c:100*(corrected[c].at[t,'Adj Close']/corrected[c].at[cb12,'Adj Close']-1) for c in CORE}
-    return asof,rows,r12core,r6core
-def evaluate(state,asof,rows,r12,r6,now,cal):
+    return asof,rows,r12core,r6core,turnover_complete
+def evaluate(state,asof,rows,r12,r6,now,cal,turnover_complete=True):
     p=pd.Period(asof,'M');prior=state['month_ends'].get(str(p-1))
     top,chosen=rank_i2(rows,prior)
     current=state['model_core'];preview=core_decision(current,r12,r6)
-    preview.update({'i2':chosen,'i2_cash_pct':50-5*len(chosen) if prior is not None else None,'prior_month':prior['date'] if prior else None,'prior_provenance':prior['provenance'] if prior else None})
+    preview.update({'i2':chosen,'i2_cash_pct':50-5*len(chosen) if prior is not None and turnover_complete else None,'i2_available':turnover_complete and prior is not None,'prior_month':prior['date'] if prior else None,'prior_provenance':prior['provenance'] if prior else None})
     upcoming=[d for d in cal['sessions'] if d>asof]
     nextday=upcoming[0] if upcoming else None
     is_end=nextday is not None and nextday[:7]!=asof[:7]
     existing=next((s for s in state['signals'] if s['signal_date']==asof),None)
-    reason='非月底，僅觀察，不換倉'
+    reason='非月底，僅觀察，不換倉' if turnover_complete else '動能已查核；換手率待更新，I2預覽暫停'
     if is_end:
         state['month_ends'].setdefault(str(p),{'date':asof,'top30':top,'eligible_count':sum(r['r6'] is not None for r in rows),'provenance':'observed'})
         before_open=now.date().isoformat()<nextday or (now.date().isoformat()==nextday and now.time()<dt_time(9,0))
         if existing:reason='月底訊號已存檔，不覆寫'
         elif prior is None:reason='缺少上月底快照；本月正式訊號暫停'
+        elif not turnover_complete:reason='月底動能已查核；換手率待更新，正式訊號暫停'
         elif not before_open:reason='開盤前未完成；不回填正式訊號'
         else:
             sig={'signal_date':asof,'next_session':nextday,'generated':now.isoformat(timespec='seconds'),**preview,
@@ -172,8 +177,8 @@ def evaluate(state,asof,rows,r12,r6,now,cal):
 def main():
     now=datetime.now(radar.TZ);state=read(STATE);old=read(DATA)
     try:
-        cal=calendar();asof,rows,r12,r6=fetch_observation(now,cal)
-        state,preview,reason,is_end=evaluate(state,asof,rows,r12,r6,now,cal)
+        cal=calendar();asof,rows,r12,r6,turnover_complete=fetch_observation(now,cal)
+        state,preview,reason,is_end=evaluate(state,asof,rows,r12,r6,now,cal,turnover_complete)
         past={r['code']:r for r in old.get('rows',[])}
         for r in rows:
             prev=past.get(r['code'],{})
@@ -181,12 +186,12 @@ def main():
             for key in ('r6','r12','t20'):
                 if r[key] is not None:r[key]=round(r[key],4)
         formal=state['signals'][-1] if state['signals'] else None
-        data={'version':VERSION,'asof':asof,'generated':now.isoformat(timespec='seconds'),'status':'complete','message':reason,'coverage':len(rows),'expected':150,
+        data={'version':VERSION,'asof':asof,'generated':now.isoformat(timespec='seconds'),'status':'complete' if turnover_complete else 'partial_turnover','message':reason,'coverage':len(rows),'expected':150,
           'current_core':state['model_core'],'preview':preview,'formal':formal,'signal_history':state['signals'],'rows':sorted(rows,key=lambda r:(r['rank6'] or 9999,r['code'])),
           'last_attempt':now.isoformat(timespec='seconds'),'is_month_end':is_end,'sources':['元大0050及0051持股代理池（非官方歷史成分名單）','Yahoo Finance 含息還原價格衍生指標','TWSE 日期查核成交股數及發行股數']}
         write(STATE,state);write(DATA,data)
         print(f'D6-M {asof}: {reason}; I2候選 {len(preview["i2"])}; 模型核心 {state["model_core"]}')
-        return 0
+        return 0 if turnover_complete else 1
     except Exception as exc:
         old.update(status='stale',message='本次資料未通過稽核，保留前次快照，不產生新訊號。',last_attempt=now.isoformat(timespec='seconds'))
         write(DATA,old);print(f"資料稽核失敗：{exc}");return 1
