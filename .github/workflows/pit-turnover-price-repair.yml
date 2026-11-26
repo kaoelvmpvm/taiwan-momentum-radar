@@ -1,0 +1,105 @@
+name: PIT T1 verify official price gaps and complete backtest
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pit_turnover_price_repair.py'
+      - '.github/workflows/pit-turnover-price-repair.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-price-audit
+          run-id: '45724949827'
+          github-token: ${{ github.token }}
+          path: pit-price-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-timing-audit
+          run-id: '45720708521'
+          github-token: ${{ github.token }}
+          path: pit-timing-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-reconcile-audit
+          run-id: '45717164913'
+          github-token: ${{ github.token }}
+          path: pit-reconcile-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-special-audit
+          run-id: '45726492044'
+          github-token: ${{ github.token }}
+          path: pit-special-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-provisional-backtest
+          run-id: '45727730233'
+          github-token: ${{ github.token }}
+          path: pit-prior-backtest
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-turnover-2020
+          run-id: '45745731866'
+          github-token: ${{ github.token }}
+          path: pit-turnover-input/2020
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-turnover-2021
+          run-id: '45745731866'
+          github-token: ${{ github.token }}
+          path: pit-turnover-input/2021
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-turnover-2022
+          run-id: '45745731866'
+          github-token: ${{ github.token }}
+          path: pit-turnover-input/2022
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-turnover-2023
+          run-id: '45745731866'
+          github-token: ${{ github.token }}
+          path: pit-turnover-input/2023
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-turnover-2024
+          run-id: '45745731866'
+          github-token: ${{ github.token }}
+          path: pit-turnover-input/2024
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-turnover-2025
+          run-id: '45745731866'
+          github-token: ${{ github.token }}
+          path: pit-turnover-input/2025
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-turnover-2026
+          run-id: '45745731866'
+          github-token: ${{ github.token }}
+          path: pit-turnover-input/2026
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-turnover-repaired-results
+          run-id: '45761115036'
+          github-token: ${{ github.token }}
+          path: pit-turnover-repaired-input
+      - run: pip install -r requirements.txt beautifulsoup4
+      - run: python -u pit_turnover_price_repair.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-turnover-price-repaired-results
+          path: pit-turnover-output/
+          retention-days: 30
