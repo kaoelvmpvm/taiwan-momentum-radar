@@ -1,0 +1,104 @@
+name: H-series historical fundamental data audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/pit-h-fundamental.yml'
+permissions:
+  contents: read
+jobs:
+  historical:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - { start: 2018, end: 2020 }
+          - { start: 2021, end: 2023 }
+          - { start: 2024, end: 2026 }
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests pandas beautifulsoup4
+      - run: |
+          cat > collect.py <<'PY'
+          import requests,time,sys,os,json,gzip,hashlib,io,re
+          from pathlib import Path
+          import pandas as pd
+          from bs4 import BeautifulSoup
+          start,end=map(int,sys.argv[1:3]);out=Path('h-fundamental-output');out.mkdir(exist_ok=True)
+          headers={'User-Agent':'Mozilla/5.0','Accept':'text/html,application/json,text/csv,*/*'}
+          s=requests.Session(); s.headers.update(headers)
+          def save(name,r,meta):
+           r.raise_for_status(); b=r.content
+           if len(b)<2000:raise ValueError(f'short response {len(b)}')
+           (out/(name+'.gz')).write_bytes(gzip.compress(b)); meta.update({'url':r.url,'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b),'encoding':r.encoding});return meta
+          def request(method,url,**kwargs):
+           for i in range(2):
+            try:
+             r=s.request(method,url,timeout=18,**kwargs); r.raise_for_status();time.sleep(.8);return r
+            except Exception as e:
+             err=e;time.sleep(2)
+           raise err
+          def decode(b):
+           for enc in ('utf-8-sig','cp950','big5'):
+            try:return b.decode(enc)
+            except UnicodeDecodeError:pass
+           return b.decode('utf-8',errors='replace')
+          def check_rev(b):
+           t=decode(b);return ('營收' in t or '營業收入' in t) and '2330' in t and '2317' in t and '公司代號' in t
+          manifest={};errors={}
+          for y in range(start,end+1):
+           for m in range(1,13):
+            if (y,m)<(2019,4) or (y,m)>(2026,9):continue
+            key=f'rev-{y}-{m:02d}'
+            base=f'https://mopsov.twse.com.tw/nas/t21/sii/t21sc03_{y-1911}_{m}'
+            try:
+             # official full-market historical CSV, otherwise domestic and foreign html
+             try:
+              r=request('GET',base+'.csv')
+              if not check_rev(r.content):raise ValueError('invalid CSV headings')
+              manifest[key]=save(key+'.csv',r,{'period':f'{y}-{m:02d}','source':'MOPS monthly revenue CSV'})
+             except Exception as e:
+              r=request('GET',base+'_0.html')
+              if not check_rev(r.content):raise ValueError('invalid domestic HTML headings')
+              manifest[key+'-0']=save(key+'-0.html',r,{'period':f'{y}-{m:02d}','source':'MOPS domestic monthly revenue HTML'})
+              r=request('GET',base+'_1.html')
+              if '營收' not in decode(r.content) or '公司代號' not in decode(r.content):raise ValueError('invalid foreign HTML headings')
+              manifest[key+'-1']=save(key+'-1.html',r,{'period':f'{y}-{m:02d}','source':'MOPS foreign monthly revenue HTML'})
+             print('REVENUE',key,'OK',flush=True)
+            except Exception as e:errors[key]=str(e);print('REVENUE',key,'ERROR',str(e)[:200],flush=True)
+            (out/'manifest.json').write_text(json.dumps({'files':manifest,'errors':errors},ensure_ascii=False,indent=2))
+          # financial statements, summary by market and year/quarter
+          for y in range(start,end+1):
+           for q in range(1,5):
+            if (y,q)<(2018,2) or (y,q)>(2026,2):continue
+            key=f'financial-{y}Q{q}'
+            params={'encodeURIComponent':'1','step':'1','firstin':'1','off':'1','TYPEK':'sii','year':str(y-1911),'season':f'{q:02d}','isnew':'false','Stp':'1'}
+            try:
+             for host in ('mops.twse.com.tw','mopsov.twse.com.tw'):
+              for method in ('POST','GET'):
+               try:
+                r=request(method,f'https://{host}/mops/web/ajax_t163sb04',**({'data':params} if method=='POST' else {'params':params}))
+                t=decode(r.content)
+                if not ('淨利' in t and '公司代號' in t and '2330' in t and '2317' in t):raise ValueError('invalid quarterly statement headings')
+                manifest[key]=save(key+'.html',r,{'period':f'{y}Q{q}','source':'MOPS consolidated income statement summary','request':params});break
+               except Exception as e:err=e
+              else:continue
+              break
+             else:raise err
+             print('FINANCIAL',key,'OK',flush=True)
+            except Exception as e:errors[key]=str(e);print('FINANCIAL',key,'ERROR',str(e)[:200],flush=True)
+            (out/'manifest.json').write_text(json.dumps({'files':manifest,'errors':errors},ensure_ascii=False,indent=2))
+          print('DONE',len(manifest),len(errors),flush=True)
+          PY
+          python -u collect.py ${{ matrix.start }} ${{ matrix.end }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-h-fundamental-${{ matrix.start }}
+          path: h-fundamental-output/
+          retention-days: 30
