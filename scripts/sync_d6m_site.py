@@ -16,11 +16,26 @@ def get_json(url,headers=None,body=None):
             return json.loads(res.read())
     except HTTPError as e:
         # Never expose request headers, tokens, or upstream body.
-        raise RuntimeError(f'HTTP {e.code} from {urlsplit(url).hostname}') from None
+        origin=urlsplit(url).hostname
+        label=''
+        if origin==urlsplit(PUBLIC).hostname:
+            # Only log a fixed diagnostic classification, never the response body or request headers.
+            try:
+                body=e.read(8192).decode('utf-8',errors='replace')
+                obj=json.loads(body)
+                label='; site worker rejected credential' if obj=={'error':'Forbidden'} else '; JSON rejection'
+            except Exception:
+                flags=('cloudflare','access denied','forbidden','blocked','authentication','unauthorized','rate limit')
+                low=body.lower() if 'body' in locals() else ''
+                label='; response markers='+','.join(x for x in flags if x in low)
+            label+='; path='+urlsplit(url).path
+        raise RuntimeError(f'HTTP {e.code} from {origin}{label}') from None
 def main():
     raw=(ROOT/'site/data.json').read_bytes()
     data=json.loads(raw)
     if len(data.get('rows',[]))!=150 or data.get('expected')!=150:raise ValueError('Wrong snapshot size')
+    public_before=get_json(PUBLIC+'/data.json')
+    print('Public anonymous read reachable; prior asof '+public_before['asof'],flush=True)
     request_url=os.environ['ACTIONS_ID_TOKEN_REQUEST_URL']
     params=urlencode({'audience':ENDPOINT})
     token=get_json(request_url+('&' if '?' in request_url else '?')+params,
