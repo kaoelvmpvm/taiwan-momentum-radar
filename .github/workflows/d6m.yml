@@ -12,6 +12,7 @@ on:
       - 'site/index.html'
       - 'tests/test_d6m_live.py'
       - 'tests/test_d6m_site.py'
+      - 'scripts/sync_d6m_site.py'
       - 'paper_calendar.json'
 permissions:
   contents: read
@@ -84,15 +85,30 @@ jobs:
       - name: Mark data issue
         if: steps.evaluate.outcome == 'failure'
         run: echo "::warning::部分或全部行情未通過稽核；不發出新的正式信號。"
-      - name: Upload site bundle
+      - name: Upload optional GitHub Pages bundle
+        if: vars.PAGES_ENABLED == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
       - name: Prune old turnover cache
         if: always()
         run: find .d6m-raw -type f -mtime +45 -delete 2>/dev/null || true
+  sync_public:
+    name: Sync public dashboard and verify read-back
+    needs: update
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Publish only site/data.json using ephemeral identity
+        run: python3 scripts/sync_d6m_site.py
   deploy:
-    name: Publish mobile dashboard
+    name: Optional GitHub Pages deployment
+    if: vars.PAGES_ENABLED == 'true'
     needs: update
     runs-on: ubuntu-latest
     permissions:

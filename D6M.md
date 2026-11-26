@@ -19,6 +19,7 @@
 - 來源：元大投信持股代理、Yahoo含息還原價格、TWSE當日成交股數與發行股數。不同資料源日期必須一致、收盤價查核；不輸出原始價格、成交量、發行股數、私有資料。
 - 須確認公開衍生資料符合各來源授權及服務條款。
 
-## 公開部署
-私有 repo 不需要改為公開。若帳號支援私有 repo 的 GitHub Pages，Settings → Pages → Build and deployment → Source → GitHub Actions，再重跑工作流程。只上傳 `site/`，不公開 repo 或回測原始資料。若方案不支援，需要獨立公用展示 repo 或其他有授權的公開靜態託管；不應為了 Pages 將研究 repo 改成公開。
-預期網址：https://kaoelvmpvm.github.io/taiwan-momentum-radar/ （須成功部署才會生效）。
+## 公開展示及同步
+手機優先公開頁：https://taiwan-d6m-radar.kaoelvmpvm.chatgpt.site/
+研究 repo 維持私有；每次更新後，獨立 sync_public 工作只輸出 site/data.json 至公開展示站，以 GitHub Actions 短效 OIDC 身分驗證指定 repo ID、main 分支及固定工作流程。傳送後匿名讀回並與 repo 原始 JSON 比對。沒有長期 GitHub PAT，也不需公開 repo。若同步失敗，公開頁保留上一版，Actions 顯示錯誤並可重跑；禁止自動補值。 
+GitHub Pages 仍可備援使用，但目前未啟用；若日後帳號支援，在 Settings → Pages → Source → GitHub Actions，新增 Actions repository variable PAGES_ENABLED=true 後重跑。預設不執行 Pages 部署，避免日常資料已成功卻顯示部署失敗。 
