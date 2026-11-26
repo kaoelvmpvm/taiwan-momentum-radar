@@ -115,4 +115,41 @@ class TestOfficialTurnover(unittest.TestCase):
             result=live.collect_turnover(days,['2330','1216'])
             self.assertEqual(result['2330'],20)
             self.assertIsNone(result['1216'])
+class TestVerifiedPriceRecovery(unittest.TestCase):
+    def setUp(self):
+        from datetime import timedelta
+        self.day='2026-11-26';self.now=dt('2026-11-27','06:30')
+        dates=[(datetime(2026,11,7)+timedelta(days=i)).date().isoformat() for i in range(20)]
+        self.cal={'valid_from':dates[0],'valid_through':'2026-12-01','sessions':dates+['2026-11-27','2026-11-30','2026-12-01']}
+        self.state=state()
+        r=rows()
+        for a in r:a['r12']=10.0
+        _,chosen=rank_i2(r,self.state['month_ends']['2026-10'])
+        self.saved={'version':live.VERSION,'asof':self.day,'status':'partial_turnover','coverage':150,'current_core':'2330','signal_history':[],'is_month_end':False,'preview':{'prior_month':'2026-10-30','prior_provenance':'observed','i2':chosen},'rows':r}
+    def test_checkpoint_reuse_no_price_download(self):
+        vals={k:10.0 for k in live.CORE}
+        c={'version':live.VERSION,'asof':self.day,'rows':self.saved['rows'],'r12':vals,'r6':vals,'days':live.dated_sessions(self.cal,self.day)}
+        with TemporaryDirectory() as tmp,patch.object(live,'CACHE',Path(tmp)),patch.object(live,'fetch_prices') as prices,patch.object(live,'collect_turnover',side_effect=lambda days,codes:{k:1.5 for k in codes}):
+            live.write(Path(tmp)/f'{self.day}_observation.json',c)
+            a,r,_,_,ok=live.fetch_observation(self.now,self.cal)
+            self.assertTrue(ok);self.assertEqual(a,self.day);self.assertEqual(r[0]['t20'],1.5);prices.assert_not_called()
+            c['asof']='2026-11-25'
+            with self.assertRaises(ValueError):live.validate_price_checkpoint(c,self.day,self.cal)
+    def test_complete_only_exact_day_and_keep_model_state(self):
+        def turnover(days,codes):
+            self.assertEqual(days[-1],self.day)
+            return {c:float(i+1) for i,c in enumerate(codes)}
+        data=live.recover_verified_preview(self.saved,self.state,self.day,self.cal,self.now,turnover,clock=lambda:self.now)
+        self.assertEqual(data['status'],'complete');self.assertEqual(data['rows'][0]['rank6'],1);self.assertEqual(data['rows'][0]['t20'],1.0)
+        self.assertEqual(data['preview']['i2'],[str(i) for i in range(1044,1034,-1)])
+        self.assertFalse(self.state['signals']);self.assertEqual(self.state['model_core'],'2330')
+    def test_recovery_reject_month_end_and_wrong_date(self):
+        with self.assertRaises(ValueError):live.recover_verified_preview(self.saved,self.state,'2026-11-27',self.cal,self.now)
+        self.saved['is_month_end']=True
+        with self.assertRaises(ValueError):live.recover_verified_preview(self.saved,self.state,self.day,self.cal,self.now)
+    def test_unavailable_report_keeps_explicit_preview(self):
+        def fail(days,codes):raise ValueError('not published')
+        data=live.recover_verified_preview(self.saved,self.state,self.day,self.cal,self.now,fail,clock=lambda:self.now)
+        self.assertEqual(data['status'],'partial_turnover')
+        self.assertFalse(self.state['signals'])
 if __name__=='__main__':unittest.main()

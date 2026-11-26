@@ -16,6 +16,7 @@ on:
       - 'tests/test_d6m_site.py'
       - 'scripts/sync_d6m_site.py'
       - 'paper_calendar.json'
+      - 'verified_recovery/**'
 permissions:
   contents: read
 concurrency:
@@ -117,6 +118,7 @@ jobs:
           path: .d6m-raw/*.json
           retention-days: 45
           if-no-files-found: ignore
+          include-hidden-files: true
       - name: Report incomplete data as failed run
         if: always() && !cancelled() && steps.evaluate.outcome == 'failure'
         run: |

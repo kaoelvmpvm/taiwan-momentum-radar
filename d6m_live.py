@@ -129,7 +129,7 @@ def daily_table(day,kind):
         for fmt in ('json','csv'):
             response=None
             try:
-                response=requests.get(url,params={**params,'response':fmt},headers={'User-Agent':'Mozilla/5.0'},timeout=25)
+                response=requests.get(url,params={'date':params['date'],'response':fmt,**{k:v for k,v in params.items() if k!='date'}},headers={'User-Agent':'Mozilla/5.0'},timeout=25)
                 response.raise_for_status()
                 x=response.json() if fmt=='json' else parse_report_csv(response.content,day,field)
                 out=date_and_fields(x,day,field)
@@ -165,7 +165,7 @@ def collect_turnover(days,codes):
     print(f'換手率整日報表稽核：{verified}/20；缺漏報表 {len(errors)} 份',flush=True)
     if errors:raise ValueError(f'{verified}/20 日完整；缺漏 {len(errors)} 份：'+'；'.join(errors[:4]))
     return {c:None if c in missing else totals[c] for c in codes}
-def fetch_observation(now,cal):
+def fetch_prices(now,cal):
     radar.OUT.mkdir(exist_ok=True);CACHE.mkdir(exist_ok=True)
     funds=radar.fund_snapshot();asof=funds['0050']['date']
     if asof!=expected_session(now,cal) or any(f['date']!=asof for f in funds.values()):raise ValueError(f'投信/預期行情日未同步：{asof} / {expected_session(now,cal)}')
@@ -211,15 +211,50 @@ def fetch_observation(now,cal):
     if issues or len(corrected)<len(set(pool)|set(CORE)):
         raise ValueError(f'價格稽核未通過 {len(issues)} 檔：'+ '; '.join(issues[:8]))
     days=[str(d.date()) for d in bench.loc[:t].index[-20:]]
+    r12core={c:100*(corrected[c].at[t,'Adj Close']/corrected[c].at[cb12,'Adj Close']-1) for c in CORE}
+    return asof,rows,r12core,r6core,days
+
+def dated_sessions(cal,asof):
+    days=[d for d in cal['sessions'] if d<=asof][-20:]
+    if len(days)!=20 or days[-1]!=asof or days!=sorted(set(days)):
+        raise ValueError('官方日曆中20個交易日不完整')
+    return days
+
+def validate_price_checkpoint(c,asof,cal):
+    """A checkpoint is created only after full source-price audit, never from a rounded public snapshot."""
+    if c.get('version')!=VERSION or c.get('asof')!=asof or c.get('days')!=dated_sessions(cal,asof):
+        raise ValueError('動能查核快取交易日或版本不符')
+    rows=c['rows'];r12=c['r12'];r6=c['r6']
+    if len(rows)!=150 or len({r['code'] for r in rows})!=150 or any(not math.isfinite(r[k]) for r in rows for k in ('r12','r6')):
+        raise ValueError('動能查核快取候選池不完整')
+    if set(r12)!=set(CORE) or set(r6)!=set(CORE) or any(not math.isfinite(v) for v in list(r12.values())+list(r6.values())):
+        raise ValueError('核心查核快取不完整')
+    return rows,r12,r6,c['days']
+
+def fetch_observation(now,cal):
+    asof=expected_session(now,cal);path=CACHE/f'{asof}_observation.json'
+    if path.exists():
+        try:
+            rows,r12core,r6core,days=validate_price_checkpoint(read(path),asof,cal)
+            print(f'{asof}: 恢復已完整驗證的150檔原始動能及核心指標；只補抓換手率',flush=True)
+        except Exception as exc:
+            print(f'查核快取無效：{exc}, 重新查核行情',flush=True)
+            path.unlink()
+    if not path.exists():
+        observed,rows,r12core,r6core,days=fetch_prices(now,cal)
+        if observed!=asof:raise ValueError('價格查核交易日不符')
+        c={'version':VERSION,'asof':asof,'rows':rows,'r12':r12core,'r6':r6core,'days':days}
+        validate_price_checkpoint(c,asof,cal)
+        CACHE.mkdir(exist_ok=True);write(path,c)
     turnover_complete=True
-    try:turnover=collect_turnover(days,pool)
+    codes=[r['code'] for r in rows]
+    try:turnover=collect_turnover(days,codes)
     except Exception as exc:
-        turnover_complete=False;turnover={c:None for c in pool}
+        turnover_complete=False;turnover={c:None for c in codes}
         print(f'換手率來源尚未通過稽核：{exc}',flush=True)
     for r in rows:
         r['t20']=turnover[r['code']]
         if r['t20'] is None:r['reason']='20日換手率來源待更新' if not turnover_complete else '20日成交股數或發行股數缺漏；不列入I2'
-    r12core={c:100*(corrected[c].at[t,'Adj Close']/corrected[c].at[cb12,'Adj Close']-1) for c in CORE}
     return asof,rows,r12core,r6core,turnover_complete
 def evaluate(state,asof,rows,r12,r6,now,cal,turnover_complete=True):
     p=pd.Period(asof,'M');prior=state['month_ends'].get(str(p-1))
@@ -243,10 +278,64 @@ def evaluate(state,asof,rows,r12,r6,now,cal,turnover_complete=True):
                  'status':'provisional_seed' if prior['provenance']=='historical_reconstruction' else 'observed_signal'}
             state['signals'].append(sig);state['model_core']=sig['target'];reason='月底模型目標已存檔；非實際成交'
     return state,preview,reason,is_end
+def recover_verified_preview(saved,state,asof,cal,now,turnover_fetch=collect_turnover,clock=lambda:datetime.now(radar.TZ)):
+    """Narrow migration for older verified, rounded, non-month-end partial snapshots.
+    Keep the original momentum ranking and model state; never produce a formal signal here.
+    """
+    if saved.get('version')!=VERSION or saved.get('asof')!=asof or saved.get('status')!='partial_turnover' or saved.get('coverage')!=150:
+        raise ValueError('歷史動能查核來源日期或狀態不合')
+    upcoming=[d for d in cal['sessions'] if d>asof]
+    if not upcoming or upcoming[0][:7]!=asof[:7] or saved.get('is_month_end'):
+        raise ValueError('月底不得使用已四捨五入的相容快照補正式訊號')
+    if saved.get('current_core')!=state['model_core'] or saved.get('signal_history')!=state['signals']:
+        raise ValueError('既有模型狀態不符')
+    rows=saved['rows'];prior=state['month_ends'].get(str(pd.Period(asof,'M')-1))
+    if not prior or saved['preview'].get('prior_month')!=prior['date'] or saved['preview'].get('prior_provenance')!=prior['provenance']:
+        raise ValueError('上月底查核快照不符')
+    if len(rows)!=150 or len({r['code'] for r in rows})!=150 or sorted(r['rank6'] for r in rows)!=list(range(1,151)):
+        raise ValueError('歷史動能排名不完整')
+    for r in rows:
+        if not all(math.isfinite(r[k]) for k in ('r12','r6')) or not r.get('price_eligible',True):
+            raise ValueError('歷史動能不完整')
+        if r['top30']!=(r['rank6']<=45) or r['persistent']!=(r['top30'] and r['code'] in prior['top30']) or (r['persistent'] and r['r6']==0):
+            raise ValueError('動能排名、持續性或零值不明確')
+    days=dated_sessions(cal,asof)
+    try:turnover=turnover_fetch(days,[r['code'] for r in rows])
+    except Exception as exc:
+        print(f'換手率來源尚未通過稽核：{exc}',flush=True)
+        saved['last_attempt']=clock().isoformat(timespec='seconds')
+        return saved
+    if asof!=expected_session(clock(),cal):
+        raise ValueError('補抓期間已跨行情日')
+    for r in rows:
+        r.pop('i2_rank',None);r['selected']=False
+        r['t20']=turnover[r['code']]
+        r['reason']=None if r['t20'] is not None else '20日成交股數或發行股數缺漏；不列入I2'
+    candidates=sorted((r for r in rows if r['persistent'] and r['r6']>0 and r['t20'] is not None),key=lambda r:(-r['t20'],r['code']))
+    chosen=[r['code'] for r in candidates[:10]]
+    for i,r in enumerate(candidates):r['i2_rank']=i+1;r['selected']=r['code'] in chosen
+    for r in rows:
+        if r['t20'] is not None:r['t20']=round(r['t20'],4)
+    timestamp=clock().isoformat(timespec='seconds')
+    saved['preview'].update(i2=chosen,i2_available=True,i2_cash_pct=50-5*len(chosen))
+    saved.update(status='complete',generated=timestamp,last_attempt=timestamp,message='非月底，僅觀察，不換倉；同一交易日已驗證動能，20日官方成交及發行股數補齊。')
+    return saved
+
 def main():
     now=datetime.now(radar.TZ);state=read(STATE);old=read(DATA)
     try:
-        cal=calendar();asof,rows,r12,r6,turnover_complete=fetch_observation(now,cal)
+        cal=calendar();expected=expected_session(now,cal)
+        legacy=ROOT/'verified_recovery'/f'{expected}.json'
+        if legacy.exists():
+            if old.get('asof')==expected and old.get('status')=='complete':
+                print('同一交易日完整快照已備妥，不需重抓')
+                return 0
+            # This immutable source is an exact earlier Git snapshot whose price audit succeeded.
+            data=recover_verified_preview(read(legacy),state,expected,cal,now)
+            write(DATA,data)
+            print(f'D6-M {expected}: {data["message"]}; I2候選 {len(data["preview"]["i2"])}')
+            return 0 if data['status']=='complete' else 1
+        asof,rows,r12,r6,turnover_complete=fetch_observation(now,cal)
         # Completion, not start time, controls the before-open formal-signal cutoff.
         now=datetime.now(radar.TZ)
         if asof!=expected_session(now,cal):raise ValueError('擷取期間已跨行情日，拒絕發布過期快照')
