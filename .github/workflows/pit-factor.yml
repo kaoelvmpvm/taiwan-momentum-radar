@@ -1,0 +1,45 @@
+name: PIT official return factor reconciliation
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pit_factor_audit.py'
+      - '.github/workflows/pit-factor.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-price-audit
+          run-id: '45724949827'
+          github-token: ${{ github.token }}
+          path: pit-price-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-reconcile-audit
+          run-id: '45717164913'
+          github-token: ${{ github.token }}
+          path: pit-reconcile-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: pit-timing-audit
+          run-id: '45720708521'
+          github-token: ${{ github.token }}
+          path: pit-timing-input
+      - run: pip install -r requirements.txt beautifulsoup4
+      - run: python -u pit_factor_audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pit-factor-audit
+          path: pit-factor-output/
+          retention-days: 30
