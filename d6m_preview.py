@@ -2,12 +2,28 @@
 from datetime import datetime
 import d6m_live as live
 
+def previous_sessions(cal, asof, history_fetch=live.radar.get_history):
+    known=[d for d in cal['sessions'] if d<asof]
+    if len(known)>=20:return known[-20:]
+    # The forward calendar starts near launch. Use the same 0050 trading-session index
+    # as the daily engine for earlier sessions; collect_turnover then validates every
+    # individual day's official exchange reports independently.
+    frames,errors=history_fetch(['0050'],asof)
+    if errors or '0050' not in frames:raise ValueError('缺少0050歷史交易日')
+    dates=[str(d.date()) for d in frames['0050'].index if str(d.date())<=asof]
+    if not dates or dates[-1]!=asof or dates!=sorted(set(dates)):
+        raise ValueError('0050歷史交易日不完整')
+    days=dates[-21:-1]
+    if len(days)!=20 or (known and days[-len(known):]!=known):
+        raise ValueError('歷史交易日與官方日曆不一致')
+    return days
+
 def preview_snapshot(snapshot, state, cal, now, turnover_fetch=live.collect_turnover):
     # Never overwrite a complete/current signal, stale snapshot or another session.
     if snapshot['status'] != 'partial_turnover' or snapshot['asof'] != live.expected_session(now, cal):
         return None
     asof=snapshot['asof']
-    days=[d for d in cal['sessions'] if d<asof][-20:]
+    days=previous_sessions(cal,asof)
     if len(days)!=20:raise ValueError('昨日以前20個交易日不足')
     assert days[-1]<asof
     prior=state['month_ends'].get(str(live.pd.Period(asof,'M')-1))
