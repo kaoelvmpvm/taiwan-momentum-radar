@@ -2,8 +2,8 @@
   "version": "D6-M v1.0",
   "asof": "2026-11-25",
   "generated": "2026-11-25T22:37:52+08:00",
-  "status": "seed",
-  "message": "既有12月動能快照；6月及換手率待首次D6-M更新。非正式訊號。",
+  "status": "stale",
+  "message": "本次資料未通過稽核，保留前次快照，不產生新訊號。",
   "coverage": 150,
   "expected": 150,
   "current_core": "2881",
@@ -1816,5 +1816,5 @@
     "Yahoo Finance 還原收盤價（只展示衍生指標）",
     "TWSE 成交股數、發行股數"
   ],
-  "last_attempt": null
+  "last_attempt": "2026-11-26T20:15:20+08:00"
 }
