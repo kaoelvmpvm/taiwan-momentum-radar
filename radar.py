@@ -4,20 +4,20 @@ import json
 import math
 import re
 import time
-from datetime import datetime
+from datetime import datetime, time as dt_time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
+from fund_cache import collect, EXPECTED, FUND_URL
+from momentum_alert import is_extreme, marker, EXPLANATION
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "report"
 TZ = ZoneInfo("Asia/Taipei")
 MARKET = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
-FUND_URL = "https://www.yuantaetfs.com/product/detail/{}/ratio"
 CODE = re.compile(r"^[1-9][0-9]{3}$")
-EXPECTED = {"0050": 50, "0051": 100}
 
 
 def fund_rows(text, tables=()):
@@ -108,82 +108,101 @@ def export_fund_rows(page, fund, expected, preview):
     return result
 
 
-def fund_snapshot():
+def _fetch_fund(fund):
     from playwright.sync_api import sync_playwright
-    result = {}
+    expected = EXPECTED[fund]
+    OUT.mkdir(exist_ok=True)
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         try:
-            for fund, expected in EXPECTED.items():
-                page = browser.new_page(viewport={"width": 390, "height": 844}, locale="zh-TW", accept_downloads=True)
-                try:
-                    page.goto(FUND_URL.format(fund), wait_until="domcontentloaded", timeout=60000)
-                    page.wait_for_function("document.body.innerText.includes('基金權重-股票') || document.body.innerText.includes('基金權重－股票')", timeout=45000)
-                    page.wait_for_timeout(2000)
-                    def read_stock():
-                        body = page.locator("body").inner_text()
-                        segment = re.split(r"基金權重[-－]股票", body, maxsplit=1)[-1]
-                        segment = re.split(r"基金權重[-－](?:期貨|債券|ETF)", segment, maxsplit=1)[0]
-                        rows = fund_rows(segment)
-                        # Desktop stock table: scope to a table with the stock header.
-                        for table in page.locator("table:visible").all():
-                            txt = table.inner_text()
-                            if "商品代碼" in txt and "商品名稱" in txt and "商品年月" not in txt:
-                                cells = table.locator("tr").evaluate_all("(rs) => rs.map(r => Array.from(r.querySelectorAll('td')).map(c => c.innerText))")
-                                rows.update(fund_rows("", cells))
-                        return segment, rows
-                    segment, rows = read_stock()
-                    dates = re.findall(r"(?:Trade Date|資料日期|交易日期|持股日期|日期)\s*[:：]?\s*(20\d{2}[-/]\d{1,2}[-/]\d{1,2})", segment, re.I)
-                    if not dates:
-                        raise ValueError(f"{fund}：持股區塊找不到資料日期")
-                    day = str(pd.Timestamp(dates[0]).date())
-                    preview = dict(rows)
-                    method = "page"
-                    if len(rows) != expected:
-                        try:
-                            rows = export_fund_rows(page, fund, expected, preview)
-                            method = "issuer Excel"
-                        except Exception as exc:
-                            print(f"{fund} Excel export unavailable: {exc}")
-                            more = page.get_by_text(re.compile(r"^(More|更多|顯示更多|展開更多|查看更多|展開|看更多)$", re.I))
-                            for attempt in range(30):
-                                candidates = [x for x in more.all() if x.is_visible()]
-                                if not candidates:
-                                    break
-                                try:
-                                    candidates[0].scroll_into_view_if_needed(timeout=4000)
-                                    candidates[0].click(timeout=6000)
-                                except Exception as exc:
-                                    print(f"{fund} More click failed: {exc}")
-                                    break
-                                page.wait_for_timeout(1200)
-                                _, expanded = read_stock()
-                                rows.update(expanded)
-                                # Some layouts show all holdings in a separate modal.
-                                for dialog in page.locator('[role="dialog"]:visible, .modal:visible').all():
-                                    rows.update(fund_rows(dialog.inner_text()))
-                                if len(rows) >= expected:
-                                    break
-                            method = "expanded page"
-                    print(f"{fund}: {len(rows)}/{expected}, date={day}, method={method}")
-                    if len(rows) != expected or not set(preview).issubset(rows):
-                        raise ValueError(f"{fund}：預期 {expected} 檔，取得 {len(rows)} 檔")
-                    result[fund] = {"date": day, "members": rows, "source": FUND_URL.format(fund), "method": method}
-                except Exception:
+            page = browser.new_page(viewport={"width": 390, "height": 844}, locale="zh-TW", accept_downloads=True)
+            try:
+                page.goto(FUND_URL.format(fund), wait_until="domcontentloaded", timeout=60000)
+                page.wait_for_function("document.body.innerText.includes('基金權重-股票') || document.body.innerText.includes('基金權重－股票')", timeout=45000)
+                page.wait_for_timeout(2000)
+                def read_stock():
+                    body = page.locator("body").inner_text()
+                    segment = re.split(r"基金權重[-－]股票", body, maxsplit=1)[-1]
+                    segment = re.split(r"基金權重[-－](?:期貨|債券|ETF)", segment, maxsplit=1)[0]
+                    rows = fund_rows(segment)
+                    # Desktop stock table: scope to a table with the stock header.
+                    for table in page.locator("table:visible").all():
+                        txt = table.inner_text()
+                        if "商品代碼" in txt and "商品名稱" in txt and "商品年月" not in txt:
+                            cells = table.locator("tr").evaluate_all("(rs) => rs.map(r => Array.from(r.querySelectorAll('td')).map(c => c.innerText))")
+                            rows.update(fund_rows("", cells))
+                    return segment, rows
+                segment, rows = read_stock()
+                dates = re.findall(r"(?:Trade Date|資料日期|交易日期|持股日期|日期)\s*[:：]?\s*(20\d{2}[-/]\d{1,2}[-/]\d{1,2})", segment, re.I)
+                if not dates:
+                    raise ValueError(f"{fund}：持股區塊找不到資料日期")
+                day = str(pd.Timestamp(dates[0]).date())
+                if {str(pd.Timestamp(d).date()) for d in dates} != {day}:
+                    raise ValueError(f"{fund}：持股區塊日期不一致")
+                preview = dict(rows)
+                method = "page"
+                if len(rows) != expected:
                     try:
-                        page.screenshot(path=str(OUT / f"debug-{fund}.png"), full_page=True)
-                        (OUT / f"debug-{fund}.txt").write_text(page.locator("body").inner_text(), encoding="utf-8")
-                    except Exception:
-                        pass
-                    raise
-                finally:
-                    page.close()
+                        rows = export_fund_rows(page, fund, expected, preview)
+                        method = "issuer Excel"
+                    except Exception as exc:
+                        print(f"{fund} Excel export unavailable: {exc}")
+                        more = page.get_by_text(re.compile(r"^(More|更多|顯示更多|展開更多|查看更多|展開|看更多)$", re.I))
+                        for attempt in range(30):
+                            candidates = [x for x in more.all() if x.is_visible()]
+                            if not candidates:
+                                break
+                            try:
+                                candidates[0].scroll_into_view_if_needed(timeout=4000)
+                                candidates[0].click(timeout=6000)
+                            except Exception as exc:
+                                print(f"{fund} More click failed: {exc}")
+                                break
+                            page.wait_for_timeout(1200)
+                            _, expanded = read_stock()
+                            rows.update(expanded)
+                            # Some layouts show all holdings in a separate modal.
+                            for dialog in page.locator('[role="dialog"]:visible, .modal:visible').all():
+                                rows.update(fund_rows(dialog.inner_text()))
+                            if len(rows) >= expected:
+                                break
+                        method = "expanded page"
+                print(f"{fund}: {len(rows)}/{expected}, date={day}, method={method}")
+                if len(rows) != expected or not set(preview).issubset(rows):
+                    raise ValueError(f"{fund}：預期 {expected} 檔，取得 {len(rows)} 檔")
+                # The visible source must still refer to the same dated stock report after export/expansion.
+                after, _ = read_stock()
+                final_dates = re.findall(r"(?:Trade Date|資料日期|交易日期|持股日期|日期)\s*[:：]?\s*(20\d{2}[-/]\d{1,2}[-/]\d{1,2})", after, re.I)
+                if {str(pd.Timestamp(d).date()) for d in final_dates} != {day}:
+                    raise ValueError(f"{fund}：擷取期間持股日期改變或不明")
+                return {"date": day, "members": rows, "source": FUND_URL.format(fund), "method": method}
+            except Exception:
+                try:
+                    page.screenshot(path=str(OUT / f"debug-{fund}.png"), full_page=True)
+                    (OUT / f"debug-{fund}.txt").write_text(page.locator("body").inner_text(), encoding="utf-8")
+                except Exception:
+                    pass
+                raise
+            finally:
+                page.close()
         finally:
             browser.close()
-    a, b = result["0050"], result["0051"]
-    if a["date"] != b["date"] or set(a["members"]) & set(b["members"]):
-        raise ValueError("兩基金持股日期不一致或有重複股票")
-    return result
+
+
+def fund_snapshot(expected_date, cache=None):
+    return collect(expected_date, cache if cache is not None else ROOT / ".fund-raw",
+                   _fetch_fund, observed_today=datetime.now(TZ).date().isoformat())
+
+
+def today_session(now, cal):
+    day = now.date().isoformat()
+    if not cal["valid_from"] <= day <= cal["valid_through"]:
+        raise ValueError("交易日曆需更新")
+    if day not in cal["sessions"]:
+        raise ValueError("今日非預定交易日，保留最近成功快照")
+    if now.time() < dt_time(13, 30):
+        raise ValueError("尚未收盤，保留最近成功快照")
+    return day
 
 
 def parse_dated_market(data, expected_date):
@@ -387,7 +406,7 @@ def momentum(frame, asof, base, official):
 def render(payload):
     e = lambda x: html.escape(str(x))
     rows = "".join(
-        f"<tr><td>{i}</td><td>{e(x['code'])}</td><td>{e(x['name'])}</td><td>{e(x['group'])}</td><td class={'up' if x['momentum']>=0 else 'down'}>{x['momentum']:+.2f}%</td></tr>"
+        f"<tr><td>{i}</td><td>{e(x['code'])}</td><td>{e(x['name']+marker(x['momentum']))}</td><td>{e(x['group'])}</td><td class={'up' if x['momentum']>=0 else 'down'}>{x['momentum']:+.2f}%</td></tr>"
         for i, x in enumerate(payload.get("ranking", []), 1))
     issues = "".join(f"<li>{e(x)}</li>" for x in payload.get("issues", []))
     state = "資料檢查通過（仍為研究排名）" if payload["complete"] else "資料不完整／未核對，不可判定全池第一名"
@@ -395,7 +414,7 @@ def render(payload):
 <style>body{{font:16px system-ui,sans-serif;background:#0d1421;color:#edf2fa;margin:0}}main{{max-width:920px;margin:auto;padding:28px 16px}}h1{{font-size:32px;margin:8px 0}}p,small{{color:#aebed1;line-height:1.6}}section{{border:1px solid #324258;background:#152235;padding:20px;border-radius:12px;margin:16px 0}}table{{width:100%;border-collapse:collapse}}td,th{{padding:12px 8px;text-align:left;border-bottom:1px solid #324258}}td:last-child,th:last-child{{text-align:right}}.up{{color:#ff9b96}}.down{{color:#7de0bc}}.warn{{color:#f2c879}}input{{width:95%;padding:10px;background:#0d1421;color:white;border:1px solid #52647a;border-radius:6px}}a{{color:#9cceff}}</style>
 <main><small>TAIWAN MOMENTUM RADAR / V0.1</small><h1>台股動能雷達</h1><p>完整12個月還原價格報酬｜每日觀察｜月底交易規則尚未啟用</p>
 <section><strong class="warn">{e(state)}</strong><p>行情日期：{e(payload.get('asof','—'))}　基準日：{e(payload.get('baseline','—'))}<br>有效筆數：{len(payload.get('ranking',[]))} / 151　產製時間：{e(payload['generated'])}</p><p>0050、0051持股代理池 + 0050 ETF；不代表官方指數名單。即使資料檢查通過，還原算法仍待核對，不構成交易指令。</p></section>
-<section><h2>動能排名</h2><input id="q" placeholder="搜尋股票代碼或名稱" aria-label="搜尋股票"><table><thead><tr><th>排名</th><th>代碼</th><th>名稱</th><th>分組</th><th>12月報酬</th></tr></thead><tbody>{rows}</tbody></table></section>
+<section><h2>動能排名</h2><p>{e(EXPLANATION)}</p><input id="q" placeholder="搜尋股票代碼或名稱" aria-label="搜尋股票"><table><thead><tr><th>排名</th><th>代碼</th><th>名稱</th><th>分組</th><th>12月報酬</th></tr></thead><tbody>{rows}</tbody></table></section>
 <section><h2>資料異常與限制</h2><ul>{issues or '<li>本次自動檢查未發現異常。</li>'}</ul><p>歷史成分股與公司行動尚未獨立驗證。不得據此直接下單。</p><p><a href="https://www.yuantaetfs.com/product/detail/0050/ratio">元大0050持股</a>｜<a href="https://www.yuantaetfs.com/product/detail/0051/ratio">元大0051持股</a>｜<a href="https://openapi.twse.com.tw/">TWSE</a></p></section>
 <script>document.getElementById('q').addEventListener('input',function(){{for(const r of document.querySelectorAll('tbody tr'))r.hidden=!r.textContent.toLowerCase().includes(this.value.toLowerCase())}})</script></main></html>"""
 
@@ -404,9 +423,10 @@ def main():
     OUT.mkdir(exist_ok=True)
     payload = {"generated":datetime.now(TZ).isoformat(timespec="seconds"),"complete":False,"ranking":[],"issues":[]}
     try:
-        funds = fund_snapshot()
+        from paper import calendar
+        expected_date = today_session(datetime.now(TZ), calendar())
+        funds = fund_snapshot(expected_date)
         payload["funds"] = funds
-        expected_date = funds["0050"]["date"]
         payload["asof"] = expected_date
         try:
             market = official_market()
@@ -451,10 +471,12 @@ def main():
                     payload.setdefault("corporate_action_audit", {})[c] = audit
                     print(f"{c} corporate action audit: {json.dumps(audit, ensure_ascii=False)}")
                 score = momentum(frame, asof, base, market[c][1])
-                payload["ranking"].append({"code":c,"name":name,"group":group,"momentum":score})
+                payload["ranking"].append({"code":c,"name":name,"group":group,"momentum":score,"extreme_momentum":is_extreme(score)})
             except Exception as exc:
                 payload["issues"].append(f"{c} {name}: {exc}")
         payload["ranking"].sort(key=lambda x:(-x["momentum"],x["code"]))
+        if datetime.now(TZ).date().isoformat() != expected_date:
+            payload["issues"].append("擷取期間已跨日，不產生新當日快照")
         payload["complete"] = len(payload["ranking"]) == 151 and not payload["issues"]
     except Exception as exc:
         payload["issues"].append(str(exc))

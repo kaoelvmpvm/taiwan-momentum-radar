@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 import radar
+from momentum_alert import is_extreme
 
 ROOT=Path(__file__).resolve().parent
 STATE=ROOT/'d6m_state.json'
@@ -167,7 +168,7 @@ def collect_turnover(days,codes):
     return {c:None if c in missing else totals[c] for c in codes}
 def fetch_prices(now,cal):
     radar.OUT.mkdir(exist_ok=True);CACHE.mkdir(exist_ok=True)
-    funds=radar.fund_snapshot();asof=funds['0050']['date']
+    funds=radar.fund_snapshot(expected_session(now,cal),cache=CACHE);asof=funds['0050']['date']
     if asof!=expected_session(now,cal) or any(f['date']!=asof for f in funds.values()):raise ValueError(f'投信/預期行情日未同步：{asof} / {expected_session(now,cal)}')
     pool={c:(n,f) for f,info in funds.items() for c,n in info['members'].items()}
     if len(pool)!=150:raise ValueError('候選池非150檔')
@@ -308,6 +309,7 @@ def recover_verified_preview(saved,state,asof,cal,now,turnover_fetch=collect_tur
     if asof!=expected_session(clock(),cal):
         raise ValueError('補抓期間已跨行情日')
     for r in rows:
+        r['extreme_momentum']=is_extreme(r['r12'])
         r.pop('i2_rank',None);r['selected']=False
         r['t20']=turnover[r['code']]
         r['reason']=None if r['t20'] is not None else '20日成交股數或發行股數缺漏；不列入I2'
@@ -342,6 +344,7 @@ def main():
         state,preview,reason,is_end=evaluate(state,asof,rows,r12,r6,now,cal,turnover_complete)
         past={r['code']:r for r in old.get('rows',[])}
         for r in rows:
+            r['extreme_momentum']=is_extreme(r['r12'])
             prev=past.get(r['code'],{})
             r['rank_delta']=(prev['rank6']-r['rank6']) if old.get('asof')!=asof and prev.get('rank6') is not None and r['rank6'] is not None else prev.get('rank_delta') if old.get('asof')==asof else None
             for key in ('r6','r12','t20'):
@@ -354,6 +357,8 @@ def main():
         print(f'D6-M {asof}: {reason}; I2候選 {len(preview["i2"])}; 模型核心 {state["model_core"]}')
         return 0 if turnover_complete else 1
     except Exception as exc:
-        old.update(status='stale',message='本次資料未通過稽核，保留前次快照，不產生新訊號。',last_attempt=now.isoformat(timespec='seconds'))
+        message='本次資料未通過稽核，保留前次快照，不產生新訊號。'
+        if 'ETF持股未同步' in str(exc):message='ETF持股報表未同步，保留前次快照；已驗證報表將供重試，不產生新訊號。'
+        old.update(status='stale',message=message,last_attempt=datetime.now(radar.TZ).isoformat(timespec='seconds'))
         write(DATA,old);print(f"資料稽核失敗：{exc}");return 1
 if __name__=='__main__':raise SystemExit(main())

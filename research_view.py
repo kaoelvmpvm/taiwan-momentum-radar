@@ -3,6 +3,7 @@ import argparse
 import html
 import json
 import math
+from momentum_alert import marker, EXPLANATION
 from datetime import date
 from pathlib import Path
 
@@ -166,8 +167,8 @@ def render(state,ranking,radar_result,paper_result,run_url):
         lines += ["",f"最近已保存訊號：{cell(recent['signal_day'])}；預定開盤 {cell(recent['planned_open'])}。"]
     lines += ["","## 當前強勢股（排名觀察，非換股指令）","","| 排名 | 代碼 | 名稱 | 12個月動能 |","|---:|---|---|---:|"]
     for i,x in enumerate(ranking.get("ranking",[])[:10],1):
-        lines.append(f"| {i} | {cell(x['code'])} | {cell(x['name'])} | {x['momentum']:+.2f}% |")
-    lines += ["","## 交易成本與最近交易","",
+        lines.append(f"| {i} | {cell(x['code'])} | {cell(x['name']+marker(x['momentum']))} | {x['momentum']:+.2f}% |")
+    lines += ["",EXPLANATION,"","## 交易成本與最近交易","",
               "| 策略 | 模擬買進次數 | 模擬賣出次數 | 累計成交參考金額（元） | 帳本累計成本（元） |",
               "|---|---:|---:|---:|---:|"]
     for s in STRATEGIES:

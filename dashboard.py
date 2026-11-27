@@ -2,6 +2,7 @@
 import argparse
 import json
 import math
+from momentum_alert import is_extreme, marker, EXPLANATION
 from rank_history import save_snapshot, load_history, render_history, changes
 from datetime import date
 from pathlib import Path
@@ -31,7 +32,7 @@ def snapshot(payload):
             raise ValueError("基準ETF身分不符")
         codes.add(code)
         counts[group]=counts.get(group,0)+1
-        clean.append({"code":code,"name":name,"group":group,"momentum":value})
+        clean.append({"code":code,"name":name,"group":group,"momentum":value,"extreme_momentum":is_extreme(value)})
     if counts!=GROUP_COUNTS:
         raise ValueError("股票池組成不符")
     clean.sort(key=lambda x:(-x["momentum"],x["code"]))
@@ -80,11 +81,12 @@ def markdown(current,status,error,run_url,issues=(),history=()):
         group_text=(" | "+cell(x["group"])) if group else ""
         change=delta[x["code"]]["rank_delta"]
         movement="—" if change is None else f"{change:+d}"
-        return f"| {i} | {cell(x['code'])} | [{cell(x['name'])}](charts/{x['code']}.svg){group_text} | {x['momentum']:+.2f}% | {x['momentum']-bench['momentum']:+.2f} | {movement} |"
+        return f"| {i} | {cell(x['code'])} | [{cell(x['name']+marker(x['momentum']))}](charts/{x['code']}.svg){group_text} | {x['momentum']:+.2f}% | {x['momentum']-bench['momentum']:+.2f} | {movement} |"
     lines += [row_text(i,x) for i,x in enumerate(rows[:5],1)]
     lines += ["","### 全部151檔","","| 排名 | 代碼 | 名稱 | 群組 | 12月動能 | 相對0050（百分點） | 名次變動 |","|---:|---|---|---|---:|---:|---:|"]
     lines += [row_text(i,x,True) for i,x in enumerate(rows,1)]
     lines += ["","## 方法與限制","","完整12個月還原價格報酬；元大0050及0051持股代理池＋0050 ETF。相對0050為報酬差（百分點），不是風險調整後超額報酬。",
+              EXPLANATION,
               "每日快照僅供研究；月底規則僅用於前瞻性模擬帳本。歷史公司行動尚未全面獨立查核。不得據此直接下單。",
               "資料若未更新，請以行情日期和本次執行狀態為準。此為私人研究頁面，非公開 GitHub Pages。",""]
     return "\n".join(lines)

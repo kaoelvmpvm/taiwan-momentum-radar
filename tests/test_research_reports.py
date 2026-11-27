@@ -34,6 +34,7 @@ class ReportTests(unittest.TestCase):
     def test_generate_no_stale_archive(self):
         s=initial();s["last_day"]="2026-11-25";s["daily"]=[{"day":"2026-11-25","nav":{k:100000. for k in s["accounts"]},"unobserved_sessions":[]}]
         snap={"asof":"2026-11-25","ranking":[{"code":str(1000+i),"name":"Test","momentum":150-i} for i in range(150)]+[{"code":"0050","name":"ETF","momentum":0}]}
+        snap["ranking"][0]["momentum"]=841.45
         cal={"sessions":["2026-11-25","2026-11-30","2026-12-01"]}
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp);(p/"history").mkdir()
@@ -43,5 +44,9 @@ class ReportTests(unittest.TestCase):
             self.assertTrue((p/"reports"/"2026-11-25.md").exists())
             generate(p,"failure","skipped","https://github.com","2026-11-26",cal)
             self.assertFalse((p/"reports"/"2026-11-26.md").exists())
-            self.assertIn("不是新行情",(p/"DAILY.md").read_text())
+            report=(p/"DAILY.md").read_text()
+            self.assertIn("不是新行情",report)
+            self.assertIn("⚠ 極端動能",report)
+            self.assertIn("2026-11-25 快照",report)
+            self.assertIn("+841.45%",report)
             self.assertEqual(ledger.read_bytes(),before)

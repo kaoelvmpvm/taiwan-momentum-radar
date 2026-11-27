@@ -11,6 +11,10 @@ on:
     paths:
       - '.github/workflows/d6m.yml'
       - 'd6m_live.py'
+      - 'radar.py'
+      - 'fund_cache.py'
+      - 'momentum_alert.py'
+      - 'tests/test_fund_cache.py'
       - 'site/index.html'
       - 'tests/test_d6m_live.py'
       - 'tests/test_d6m_site.py'
@@ -37,7 +41,7 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-      - name: Restore verified dated turnover reports
+      - name: Restore verified dated turnover and ETF holdings reports
         uses: actions/cache/restore@v4
         with:
           path: .d6m-raw
@@ -104,7 +108,7 @@ jobs:
           for p in Path('.d6m-raw').glob('*.json'):
               if p.name[:10]<cutoff:p.unlink()
           PY
-      - name: Save verified dated turnover reports for next run
+      - name: Save verified dated turnover and ETF holdings reports for next run
         if: always() && !cancelled()
         uses: actions/cache/save@v4
         with:

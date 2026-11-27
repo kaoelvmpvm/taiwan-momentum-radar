@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+from momentum_alert import is_extreme, marker, EXPLANATION
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -80,7 +81,7 @@ def daily_text(state,history,radar_result,paper_result,run_url,today,ev,periods)
               "| 指標 | 結果 |","|---|---|"]
     leader=current["ranking"][0]
     bench=next(x for x in current["ranking"] if x["code"]=="0050")
-    lines.append(f"| 動能第一名 | {cell(leader['code'])} {cell(leader['name'])} {leader['momentum']:+.2f}% |")
+    lines.append(f"| 動能第一名 | {cell(leader['code'])} {cell(leader['name']+marker(leader['momentum']))} {leader['momentum']:+.2f}% |")
     lines.append(f"| 0050 十二個月動能 | {bench['momentum']:+.2f}% |")
     lines.append(f"| 正動能標的 | {sum(x['momentum']>0 for x in current['ranking'])}/151（含0050） |")
     if prev:
@@ -94,6 +95,11 @@ def daily_text(state,history,radar_result,paper_result,run_url,today,ev,periods)
         for title,arr in [("名次上升前三",rising),("名次下降前三",falling)]:
             lines.append("| "+title+" | "+("；".join(f"{cell(x['code'])} {cell(x['name'])} {ch[x['code']]['rank_delta']:+d}" for x in arr) or "無")+" |")
     else:lines.append("| 排名變動 | 僅一個成功行情日，尚無比較 |")
+    lines += ["","### 12個月動能前10名（"+current["asof"]+" 快照）","","| 排名 | 代碼 | 名稱 | 12個月動能 |","|---:|---|---|---:|"]
+    for i,x in enumerate(current["ranking"][:10],1):
+        lines.append(f"| {i} | {cell(x['code'])} | {cell(x['name']+marker(x['momentum']))} | {x['momentum']:+.2f}% |")
+    flagged=[x for x in current["ranking"] if is_extreme(x["momentum"])]
+    lines += ["","全池極端動能標記："+("；".join(f"{cell(x['code'])} {cell(x['name'])} {x['momentum']:+.2f}%" for x in flagged) or "無"),EXPLANATION]
     lines += ["","## 二、模擬績效","","| 策略 | 累計報酬 | 相對0050（百分點） | 當前回撤 |","|---|---:|---:|---:|"]
     b=state["accounts"]["S0"]["nav"]/INITIAL-1
     for s in STRATEGIES:
