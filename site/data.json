@@ -2,8 +2,8 @@
   "version": "D6-M v1.0",
   "asof": "2026-11-26",
   "generated": "2026-11-27T06:48:44+08:00",
-  "status": "complete",
-  "message": "非月底，僅觀察，不換倉；同一交易日已驗證動能，20日官方成交及發行股數補齊。",
+  "status": "stale",
+  "message": "本次資料未通過稽核，保留前次快照，不產生新訊號。",
   "coverage": 150,
   "expected": 150,
   "current_core": "2881",
@@ -2183,7 +2183,7 @@
       "rank_delta": null
     }
   ],
-  "last_attempt": "2026-11-27T06:48:44+08:00",
+  "last_attempt": "2026-11-27T16:11:25+08:00",
   "is_month_end": false,
   "sources": [
     "元大0050及0051持股代理池（非官方歷史成分名單）",
